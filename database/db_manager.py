@@ -86,3 +86,14 @@ async def get_total_per_period(user_id, year, month):
         ) as cursor:
             row = await cursor.fetchone()
             return row[0] if row[0] else 0
+
+async def get_recent_expenses(user_id, limit=10):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            '''SELECT amount, category, created_at FROM expenses 
+               WHERE user_id = ? 
+               ORDER BY created_at DESC 
+               LIMIT ?''',
+            (user_id, limit)
+        ) as cursor:
+            return await cursor.fetchall()

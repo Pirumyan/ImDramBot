@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from database import db_manager
 from config import CATEGORIES
 from logic.analyzer import analyze_expenses
@@ -14,7 +14,6 @@ router = Router()
 
 class ExpenseState(StatesGroup):
     waiting_for_amount = State()
-    waiting_for_category = State()
 
 SUPPORT_MESSAGES = [
     "Молодец, что внес расходы! 👏",
@@ -23,19 +22,30 @@ SUPPORT_MESSAGES = [
     "Порядок в финансах — порядок в жизни. Так держать! 🎯"
 ]
 
+def get_main_menu():
+    builder = ReplyKeyboardBuilder()
+    builder.button(text="💰 Добавить расход")
+    builder.button(text="📊 Статистика")
+    builder.button(text="📜 История")
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     await db_manager.add_user(message.from_user.id, message.from_user.username)
     await message.answer(
         "👋 Привет! Я твой AI-финансовый помощник **ImDram**.\n\n"
         "Я помогу тебе контролировать расходы в Армении 🇦🇲\n\n"
-        "**Как пользоваться:**\n"
-        "1. Просто отправь мне сумму (например: `5000`)\n"
-        "2. Выбери категорию\n"
-        "3. В конце месяца получи анализ и советы!\n\n"
-        "Попробуй прямо сейчас — напиши сумму расхода."
+        "Выбери действие снизу или просто отправь мне сумму (например: `5000`)",
+        reply_markup=get_main_menu()
     )
 
+@router.message(F.text == "💰 Добавить расход")
+async def ask_amount(message: types.Message, state: FSMContext):
+    await message.answer("Введи сумму расхода (только цифры):")
+    await state.set_state(ExpenseState.waiting_for_amount)
+
+@router.message(ExpenseState.waiting_for_amount, F.text.regexp(r'^\d+$'))
 @router.message(F.text.regexp(r'^\d+$'))
 async def process_amount(message: types.Message, state: FSMContext):
     amount = float(message.text)
@@ -54,6 +64,10 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     amount = data.get("amount")
     
+    if not amount:
+        await callback.answer("Ошибка: сумма не найдена.", show_alert=True)
+        return
+
     streak = await db_manager.add_expense(callback.from_user.id, amount, category)
     
     msg = f"✅ Записано: **{int(amount):,} AMD** в категорию **{category}**.\n\n"
@@ -66,6 +80,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
+@router.message(F.text == "📊 Статистика")
 @router.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     now = datetime.now()
@@ -93,3 +108,20 @@ async def cmd_stats(message: types.Message):
     photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
     
     await message.answer_photo(photo, caption=msg, parse_mode="Markdown")
+
+@router.message(F.text == "📜 История")
+@router.message(Command("history"))
+async def cmd_history(message: types.Message):
+    expenses = await db_manager.get_recent_expenses(message.from_user.id)
+    
+    if not expenses:
+        await message.answer("История расходов пуста.")
+        return
+    
+    msg = "📜 **Последние 10 трат:**\n\n"
+    for amount, category, date_str in expenses:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        date_fmt = date_obj.strftime("%d.%m %H:%M")
+        msg += f"🔹 {date_fmt} — **{int(amount):,} AMD** ({category})\n"
+    
+    await message.answer(msg)
