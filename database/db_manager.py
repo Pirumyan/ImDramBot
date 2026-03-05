@@ -105,3 +105,9 @@ async def delete_expense(expense_id, user_id):
             (expense_id, user_id)
         )
         await db.commit()
+
+async def get_user_count():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute('SELECT COUNT(*) FROM users') as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else 0

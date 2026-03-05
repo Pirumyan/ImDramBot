@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from database import db_manager
-from config import CATEGORIES
+from config import CATEGORIES, ADMIN_ID
 from logic.analyzer import analyze_expenses
 from utils.charts import generate_pie_chart
 from datetime import datetime
@@ -137,3 +137,11 @@ async def process_delete(callback: types.CallbackQuery):
     
     await callback.message.edit_text("🗑 Запись удалена.")
     await callback.answer("Удалено")
+
+@router.message(Command("admin_stats"))
+async def cmd_admin_stats(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    count = await db_manager.get_user_count()
+    await message.answer(f"📊 **Админ-статистика:**\n\nВсего пользователей в базе: **{count}**")
