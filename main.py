@@ -31,6 +31,9 @@ async def main():
         return
 
     # Initialize DB
+    if not os.getenv("DATABASE_URL"):
+        print("❌ ОШИБКА: DATABASE_URL не установлена!")
+        return
     await db_manager.init_db()
 
     # Start Web Server (for Render)

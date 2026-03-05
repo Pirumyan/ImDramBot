@@ -3,7 +3,9 @@ from datetime import datetime
 from config import DATABASE_URL
 
 async def get_connection():
-    return await asyncpg.connect(DATABASE_URL)
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL is not set in environment variables")
+    return await asyncpg.connect(DATABASE_URL, ssl='require')
 
 async def init_db():
     conn = await get_connection()
