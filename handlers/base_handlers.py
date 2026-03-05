@@ -118,10 +118,22 @@ async def cmd_history(message: types.Message):
         await message.answer("История расходов пуста.")
         return
     
-    msg = "📜 **Последние 10 трат:**\n\n"
-    for amount, category, date_str in expenses:
+    await message.answer("📜 **Последние траты:**\n(Нажми ❌ под записью, чтобы удалить её)")
+    
+    for exp_id, amount, category, date_str in expenses:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         date_fmt = date_obj.strftime("%d.%m %H:%M")
-        msg += f"🔹 {date_fmt} — **{int(amount):,} AMD** ({category})\n"
+        
+        builder = InlineKeyboardBuilder()
+        builder.button(text=f"❌ Удалить {int(amount):,} AMD", callback_data=f"del_{exp_id}")
+        
+        text = f"🔹 {date_fmt} — **{int(amount):,} AMD** ({category})"
+        await message.answer(text, reply_markup=builder.as_markup())
+
+@router.callback_query(F.data.startswith("del_"))
+async def process_delete(callback: types.CallbackQuery):
+    expense_id = int(callback.data.split("_")[1])
+    await db_manager.delete_expense(expense_id, callback.from_user.id)
     
-    await message.answer(msg)
+    await callback.message.edit_text("🗑 Запись удалена.")
+    await callback.answer("Удалено")

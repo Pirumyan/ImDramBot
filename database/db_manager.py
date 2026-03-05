@@ -90,10 +90,18 @@ async def get_total_per_period(user_id, year, month):
 async def get_recent_expenses(user_id, limit=10):
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
-            '''SELECT amount, category, created_at FROM expenses 
+            '''SELECT id, amount, category, created_at FROM expenses 
                WHERE user_id = ? 
                ORDER BY created_at DESC 
                LIMIT ?''',
             (user_id, limit)
         ) as cursor:
             return await cursor.fetchall()
+
+async def delete_expense(expense_id, user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            'DELETE FROM expenses WHERE id = ? AND user_id = ?',
+            (expense_id, user_id)
+        )
+        await db.commit()
