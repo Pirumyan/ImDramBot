@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DB_PATH = "database/imdram.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 CATEGORIES = {
     "1": "Еда 🍔",
