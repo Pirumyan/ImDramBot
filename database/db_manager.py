@@ -5,7 +5,7 @@ from config import DATABASE_URL
 async def get_connection():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL is not set in environment variables")
-    return await asyncpg.connect(DATABASE_URL, ssl='require')
+    return await asyncpg.connect(DATABASE_URL, ssl='require', statement_cache_size=0)
 
 async def init_db():
     conn = await get_connection()
@@ -68,6 +68,10 @@ async def update_streak(user_id):
     return 0
 
 async def add_expense(user_id, amount, category):
+    # Ensure user exists (especially important after DB migration)
+    # We don't have the username here, so we'll use a placeholder or None
+    await add_user(user_id, "User")
+    
     conn = await get_connection()
     try:
         await conn.execute(
