@@ -2,3 +2,4 @@ aiogram
 matplotlib
 python-dotenv
 aiosqlite
+aiohttp
