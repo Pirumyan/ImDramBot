@@ -41,7 +41,9 @@ MESSAGES = {
         "budget_status": "💰 Ваш текущий бюджет: **{amount} AMD**.\n\nЧтобы изменить, отправьте: `/budget 300000`",
         "budget_empty": "Бюджет не установлен.\nЧтобы задать месячный лимит, отправьте: `/budget 300000`",
         "budget_warn_close": "⚠️ **Внимание!** Вы потратили уже {spent} AMD и почти исчерпали бюджет ({budget} AMD).",
-        "budget_warn_exceeded": "🚨 **Лимит превышен!** Вы потратили {spent} AMD, что больше вашего бюджета ({budget} AMD)!"
+        "budget_warn_exceeded": "🚨 **Лимит превышен!** Вы потратили {spent} AMD, что больше вашего бюджета ({budget} AMD)!",
+        "btn_export": "📄 Экспорт",
+        "btn_budget": "🎯 Бюджет"
     },
     "en": {
         "start": "👋 Hello! I am your AI financial assistant **ImDram**.\n\nI will help you control your budget in Armenia 🇦🇲\n\nChoose an action below or just write me a sum (e.g., `Refueled for 20k AMD` or `Salary 500$`)",
@@ -85,7 +87,9 @@ MESSAGES = {
         "budget_status": "💰 Your current budget: **{amount} AMD**.\n\nTo change, send: `/budget 300000`",
         "budget_empty": "No budget set.\nTo set a monthly limit, send: `/budget 300000`",
         "budget_warn_close": "⚠️ **Warning!** You have spent {spent} AMD and are close to your limit ({budget} AMD).",
-        "budget_warn_exceeded": "🚨 **Budget exceeded!** You have spent {spent} AMD, which is over your budget ({budget} AMD)!"
+        "budget_warn_exceeded": "🚨 **Budget exceeded!** You have spent {spent} AMD, which is over your budget ({budget} AMD)!",
+        "btn_export": "📄 Export",
+        "btn_budget": "🎯 Budget"
     },
     "hy": {
         "start": "👋 Բարև: Ես քո AI ֆինանսական օգնականն եմ՝ **ImDram**-ը:\n\nԿօգնեմ քեզ վերահսկել բյուջեդ Հայաստանում 🇦🇲\n\nԸնտրիր գործողություն կամ պարզապես գրիր (օր.՝ `Տաքսի 2000 դրամ` կամ `Աշխատավարձ 500$`):",
@@ -129,7 +133,9 @@ MESSAGES = {
         "budget_status": "💰 Ձեր ընթացիկ բյուջեն՝ **{amount} AMD**:\n\nՓոխելու համար ուղարկեք՝ `/budget 300000`",
         "budget_empty": "Բյուջե սահմանված չէ:\nԱմսական լիմիտ սահմանելու համար ուղարկեք՝ `/budget 300000`",
         "budget_warn_close": "⚠️ **Ուշադրություն:** Դուք ծախսել եք {spent} AMD և մոտենում եք ձեր լիմիտին ({budget} AMD):",
-        "budget_warn_exceeded": "🚨 **Լիմիտը գերազանցվեց:** Դուք ծախսել եք {spent} AMD, որն ավելին է ձեր բյուջեից ({budget} AMD):"
+        "budget_warn_exceeded": "🚨 **Լիմիտը գերազանցվեց:** Դուք ծախսել եք {spent} AMD, որն ավելին է ձեր բյուջեից ({budget} AMD):",
+        "btn_export": "📄 Արտահանում",
+        "btn_budget": "🎯 Բյուջե"
     }
 }
 

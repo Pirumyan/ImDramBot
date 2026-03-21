@@ -31,8 +31,10 @@ def get_main_menu(lang):
     builder.button(text=get_msg(lang, "btn_stats"))
     builder.button(text=get_msg(lang, "btn_history"))
     builder.button(text=get_msg(lang, "btn_rates"))
+    builder.button(text=get_msg(lang, "btn_budget"))
+    builder.button(text=get_msg(lang, "btn_export"))
     builder.button(text=get_msg(lang, "btn_lang"))
-    builder.adjust(2, 2, 2)
+    builder.adjust(2, 2, 2, 2)
     return builder.as_markup(resize_keyboard=True)
 
 @router.message(Command("start"))
@@ -192,6 +194,10 @@ async def cmd_budget(message: types.Message):
         else:
             await message.answer(get_msg(lang, "budget_empty"))
 
+@router.message(lambda msg: msg.text in [get_msg("ru", "btn_budget"), get_msg("en", "btn_budget"), get_msg("hy", "btn_budget")])
+async def btn_budget(message: types.Message):
+    await cmd_budget(message)
+
 @router.message(Command("export"))
 async def cmd_export(message: types.Message):
     lang = await db_manager.get_user_language(message.from_user.id)
@@ -214,7 +220,12 @@ async def cmd_export(message: types.Message):
         doc = FSInputFile(filename)
         await message.answer_document(doc, caption=get_msg(lang, "export_success"))
     finally:
-        os.remove(filename)
+        if os.path.exists(filename):
+            os.remove(filename)
+
+@router.message(lambda msg: msg.text in [get_msg("ru", "btn_export"), get_msg("en", "btn_export"), get_msg("hy", "btn_export")])
+async def btn_export_msg(message: types.Message):
+    await cmd_export(message)
 
 
 @router.message(lambda msg: msg.text in [get_msg("ru", "btn_history"), get_msg("en", "btn_history"), get_msg("hy", "btn_history")] or msg.text == "/history")
