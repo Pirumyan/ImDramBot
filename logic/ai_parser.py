@@ -46,11 +46,14 @@ async def parse_expense_text(text: str) -> dict:
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash", 
             generation_config=generation_config,
-            system_instruction=SYSTEM_PROMPT
+            system_instruction=SYSTEM_PROMPT + "\nВАЖНО: Понимай валюту 'драм', 'dram', 'драмов' как 'AMD'."
         )
         
         response = await model.generate_content_async(text)
         result_text = response.text.strip()
+        
+        # Logging raw output for debugging
+        logging.info(f"AI Raw Response for '{text}': {result_text}")
         
         if result_text.startswith("```json"):
             result_text = result_text[7:]
@@ -84,19 +87,20 @@ async def parse_audio_file(file_path: str) -> dict:
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash", 
             generation_config=generation_config,
-            system_instruction=SYSTEM_PROMPT
+            system_instruction=SYSTEM_PROMPT + "\nВАЖНО: Понимай валюту 'драм', 'dram', 'драмов' как 'AMD'."
         )
         
         # Upload the file to Gemini
         sample_file = genai.upload_file(path=file_path)
         
         # Generate content from audio
-        response = await model.generate_content_async([sample_file, "Extract financial data from this audio record."])
+        response = await model.generate_content_async([sample_file, "Extract financial data from this audio record. Return JSON only."])
         
         # Clean up the file from Gemini storage (optional but good practice)
         genai.delete_file(sample_file.name)
         
         result_text = response.text.strip()
+        logging.info(f"AI Audio Raw Response: {result_text}")
         
         if result_text.startswith("```json"):
             result_text = result_text[7:]
