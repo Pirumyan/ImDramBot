@@ -31,7 +31,12 @@ async def init_db():
         ''')
         try:
             await conn.execute('ALTER TABLE users ADD COLUMN language VARCHAR(10) DEFAULT \'ru\'')
-        except asyncpg.exceptions.DuplicateColumnError:
+        except:
+            pass
+        
+        try:
+            await conn.execute('ALTER TABLE users ADD COLUMN budget REAL DEFAULT 0')
+        except:
             pass
 
         await conn.execute('''
@@ -40,10 +45,15 @@ async def init_db():
                 user_id BIGINT,
                 amount REAL,
                 category TEXT,
+                subcategory TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(user_id)
             )
         ''')
+        try:
+            await conn.execute('ALTER TABLE expenses ADD COLUMN subcategory TEXT')
+        except:
+            pass
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS incomes (
                 id SERIAL PRIMARY KEY,
@@ -94,12 +104,25 @@ async def update_streak(user_id):
             return streak
     return 0
 
-async def add_expense(user_id, amount, category):
+async def get_user_budget(user_id):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT budget FROM users WHERE user_id = $1', user_id)
+        return row[0] if row and row[0] else 0
+
+async def set_user_budget(user_id, budget):
+    async with pool.acquire() as conn:
+        # Budget is stored in users table. Add user if not exists
+        await conn.execute('''
+            INSERT INTO users (user_id, budget) VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET budget = EXCLUDED.budget
+        ''', user_id, budget)
+
+async def add_expense(user_id, amount, category, subcategory=None):
     await add_user(user_id, "User")
     async with pool.acquire() as conn:
         await conn.execute(
-            'INSERT INTO expenses (user_id, amount, category) VALUES ($1, $2, $3)',
-            user_id, amount, category
+            'INSERT INTO expenses (user_id, amount, category, subcategory) VALUES ($1, $2, $3, $4)',
+            user_id, amount, category, subcategory
         )
     return await update_streak(user_id)
 

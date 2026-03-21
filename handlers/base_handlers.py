@@ -114,36 +114,56 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
             forecast_msg = get_msg(lang, "forecast", amount=f"{analysis['forecast']:,}")
             msg += f"\n\n{forecast_msg}"
             
-            from logic.ai_parser import generate_financial_advice
-            ai_advice = await generate_financial_advice(total_spent, cat_sums, lang)
-            if ai_advice:
-                msg += f"\n\n🤖 **AI:** {ai_advice}"
-    
     markup = get_stats_keyboard(lang)
+    sent_msg = None
     if isinstance(message_or_call, types.Message):
         if total_spent > 0:
             chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
             photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
-            await message_or_call.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
+            sent_msg = await message_or_call.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
         else:
-            await message_or_call.answer(msg, parse_mode="Markdown", reply_markup=markup)
+            sent_msg = await message_or_call.answer(msg, parse_mode="Markdown", reply_markup=markup)
     else:
         # Edit message if no photo is attached, else answer with new photo
         if message_or_call.message.photo and total_spent > 0:
             chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
             photo = types.InputMediaPhoto(media=types.BufferedInputFile(chart_buf.read(), filename="chart.png"), caption=msg, parse_mode="Markdown")
-            await message_or_call.message.edit_media(media=photo, reply_markup=markup)
+            sent_msg = await message_or_call.message.edit_media(media=photo, reply_markup=markup)
         elif not message_or_call.message.photo and total_spent == 0:
-            await message_or_call.message.edit_text(msg, parse_mode="Markdown", reply_markup=markup)
+            sent_msg = await message_or_call.message.edit_text(msg, parse_mode="Markdown", reply_markup=markup)
         else:
             # Type changed (photo -> text or text -> photo)
-            await message_or_call.message.delete()
+            try:
+                await message_or_call.message.delete()
+            except:
+                pass
             if total_spent > 0:
                 chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
                 photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
-                await message_or_call.message.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
+                sent_msg = await message_or_call.message.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
             else:
-                await message_or_call.message.answer(msg, parse_mode="Markdown", reply_markup=markup)
+                sent_msg = await message_or_call.message.answer(msg, parse_mode="Markdown", reply_markup=markup)
+
+    # Background AI task
+    if period == "month" and total_spent > 0:
+        target_msg = sent_msg if sent_msg else getattr(message_or_call, "message", None)
+        if target_msg:
+            async def fetch_ai(b_msg, b_text, b_spent, b_sums, b_lang, b_markup):
+                from logic.ai_parser import generate_financial_advice
+                adv = await generate_financial_advice(b_spent, b_sums, b_lang)
+                if adv:
+                    new_msg = b_text + f"\n\n🤖 **AI:** {adv}"
+                    try:
+                        if getattr(b_msg, "photo", None):
+                            await b_msg.edit_caption(caption=new_msg, parse_mode="Markdown", reply_markup=b_markup)
+                        else:
+                            await b_msg.edit_text(new_msg, parse_mode="Markdown", reply_markup=b_markup)
+                    except Exception as e:
+                        import logging
+                        logging.error(f"Error appending AI text: {e}")
+            
+            import asyncio
+            asyncio.create_task(fetch_ai(target_msg, msg, total_spent, cat_sums, lang, markup))
 
 @router.message(lambda msg: msg.text in [get_msg("ru", "btn_stats"), get_msg("en", "btn_stats"), get_msg("hy", "btn_stats")] or msg.text == "/stats")
 async def cmd_stats(message: types.Message):
@@ -156,6 +176,21 @@ async def process_stats(callback: types.CallbackQuery):
     lang = await db_manager.get_user_language(callback.from_user.id)
     await send_stats(callback, callback.from_user.id, lang, period)
     await callback.answer()
+
+@router.message(Command("budget"))
+async def cmd_budget(message: types.Message):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    parts = message.text.split()
+    if len(parts) == 2 and parts[1].isdigit():
+        budget = float(parts[1])
+        await db_manager.set_user_budget(message.from_user.id, budget)
+        await message.answer(get_msg(lang, "budget_set", amount=f"{int(budget):,}"))
+    else:
+        budget = await db_manager.get_user_budget(message.from_user.id)
+        if budget > 0:
+            await message.answer(get_msg(lang, "budget_status", amount=f"{int(budget):,}"))
+        else:
+            await message.answer(get_msg(lang, "budget_empty"))
 
 @router.message(Command("export"))
 async def cmd_export(message: types.Message):
@@ -255,8 +290,17 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
         streak = await db_manager.add_income(callback.from_user.id, amount, category)
         msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=ui_category)
     else:
-        streak = await db_manager.add_expense(callback.from_user.id, amount, category)
+        streak = await db_manager.add_expense(callback.from_user.id, amount, category, None)
         msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
+        
+        # Budget check
+        budget = await db_manager.get_user_budget(callback.from_user.id)
+        if budget > 0:
+            _, t_spent, _ = await db_manager.get_stats_by_period(callback.from_user.id, "month")
+            if t_spent > budget:
+                msg += "\n\n" + get_msg(lang, "budget_warn_exceeded", spent=f"{int(t_spent):,}", budget=f"{int(budget):,}")
+            elif t_spent > budget * 0.9:
+                msg += "\n\n" + get_msg(lang, "budget_warn_close", spent=f"{int(t_spent):,}", budget=f"{int(budget):,}")
     
     if streak > 1:
         msg += "\n" + get_msg(lang, "strike", strike=streak)

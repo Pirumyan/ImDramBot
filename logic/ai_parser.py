@@ -12,7 +12,7 @@ generation_config = {
 }
 
 SYSTEM_PROMPT = f"""
-Ты интеллектуальный помощник учета финансов. Твоя задача — извлекать тип (доход/расход), сумму, валюту и категорию из сообщения пользователя о финансах.
+Ты интеллектуальный помощник учета финансов. Твоя задача — извлекать тип (доход/расход), сумму, валюту, категорию и детализацию.
 
 Пользователь может писать на русском, английском или армянском языке.
 
@@ -20,20 +20,23 @@ SYSTEM_PROMPT = f"""
 Возможные источники ДОХОДОВ: {', '.join(INCOME_CATEGORIES.values())}
 
 Алгоритм:
-1. Пойми это трата (expense) или доход (income, например "зарплата", "пополнил", "пришло", "доход" или аналог на армянском/английском).
+1. Пойми это трата (expense) или доход (income).
 2. Найди сумму. Если есть 'k' (например 5k) - это 5000.
-3. Достань валюту: AMD (драм), USD (доллар), EUR (евро), RUB (рубль). По умолчанию ставь "AMD", если валюта не указана.
-4. Подбери подходящую категорию СТРОГО из списка выше. Если неясно, ставь null для категории.
+3. Достань валюту: AMD, USD, EUR, RUB. По умолчанию "AMD".
+4. Подбери подходящую категорию СТРОГО из списка выше. 
+5. Укажи короткую подкатегорию (subcategory) — то, что конкретно купил или где потратил (например: "Яндекс Такси", "Супермаркет", "Аптека", "McDonalds"). Максимум 2 слова. Оставь null, если не сказано.
 
 Формат ответа СТРОГО JSON:
 {{
   "type": "expense",
   "amount": 2000,
   "currency": "AMD",
-  "category": "Транспорт 🚕"
+  "category": "Транспорт 🚕",
+  "subcategory": "Яндекс Такси"
 }}
 Отвечай ТОЛЬКО валидным JSON, без форматирования Markdown (без ```json).
 """
+
 
 async def parse_expense_text(text: str) -> dict:
     if not GEMINI_API_KEY:
@@ -111,11 +114,12 @@ async def parse_audio_file(file_path: str) -> dict:
             "type": data.get("type", "expense"),
             "amount": amount,
             "currency": data.get("currency", "AMD"),
-            "category": data.get("category")
+            "category": data.get("category"),
+            "subcategory": data.get("subcategory")
         }
     except Exception as e:
         logging.error(f"Error parsing audio with Gemini: {e}")
-        return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
+        return {"type": "expense", "amount": None, "currency": "AMD", "category": None, "subcategory": None}
 
 async def generate_financial_advice(total_spent, items, lang):
     if not GEMINI_API_KEY:
