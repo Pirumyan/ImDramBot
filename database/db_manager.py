@@ -169,3 +169,21 @@ async def get_user_count():
     async with pool.acquire() as conn:
         row = await conn.fetchrow('SELECT COUNT(*) FROM users')
         return row[0] if row else 0
+
+async def get_all_transactions(user_id):
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            '''
+            SELECT id, amount, category as cat, created_at, 'expense' as type FROM expenses WHERE user_id = $1
+            UNION ALL
+            SELECT id, amount, source as cat, created_at, 'income' as type FROM incomes WHERE user_id = $1
+            ORDER BY created_at DESC
+            ''',
+            user_id
+        )
+        return [(r['id'], r['amount'], r['cat'], r['created_at'].strftime("%Y-%m-%d %H:%M:%S"), r['type']) for r in rows]
+
+async def get_users_to_remind():
+    async with pool.acquire() as conn:
+        rows = await conn.fetch('SELECT user_id, language FROM users WHERE last_entry_date < CURRENT_DATE OR last_entry_date IS NULL')
+        return [(r['user_id'], r['language']) for r in rows]

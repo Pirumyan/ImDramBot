@@ -9,6 +9,8 @@ from aiohttp import web
 from config import BOT_TOKEN
 from handlers import base_handlers
 from database import db_manager
+from datetime import datetime, timedelta
+from utils.locales import get_msg
 
 # Web server for Render "Keep-Alive" trick
 async def handle(request):
@@ -24,6 +26,26 @@ async def start_web_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"📡 Web server for keep-alive started on port {port}")
+
+async def daily_reminder(bot: Bot):
+    while True:
+        now = datetime.now()
+        target_time = now.replace(hour=21, minute=0, second=0, microsecond=0)
+        if now > target_time:
+            target_time += timedelta(days=1)
+        sleep_seconds = (target_time - now).total_seconds()
+        
+        logging.info(f"⏰ Следующее напоминание запланировано через {sleep_seconds/3600:.2f} часов.")
+        await asyncio.sleep(sleep_seconds)
+        
+        logging.info("Отправка ежедневных напоминаний...")
+        users = await db_manager.get_users_to_remind()
+        for u_id, lang in users:
+            try:
+                await bot.send_message(u_id, get_msg(lang, "reminder"))
+                await asyncio.sleep(0.05)
+            except Exception as e:
+                logging.error(f"Ошибка отправки напоминания пользователю {u_id}: {e}")
 
 async def main():
     if not BOT_TOKEN or "YOUR_TELEGRAM_BOT_TOKEN_HERE" in BOT_TOKEN:
@@ -45,6 +67,9 @@ async def main():
 
     # Register handlers
     dp.include_router(base_handlers.router)
+    
+    # Start reminder task
+    asyncio.create_task(daily_reminder(bot))
 
     try:
         # Start polling

@@ -30,7 +30,13 @@ MESSAGES = {
         "del_btn": "❌ Удалить",
         "forecast": "📈 Прогноз на конец месяца:\n**{amount} AMD**",
         "savings": "💵 Если убрать лишние траты и инвестировать под 10%, за год можно заработать: **{amount} AMD**\nПлюс это поездка в отпуск или покупка нового гаджета! 🌴",
-        "advice_text": "• По категории **{category}** превышение нормы. Можно сэкономить около {amount} AMD."
+        "advice_text": "• По категории **{category}** превышение нормы. Можно сэкономить около {amount} AMD.",
+        "btn_week": "📅 Неделя",
+        "btn_month": "📅 Месяц",
+        "btn_year": "📅 Год",
+        "reminder": "⏰ Привет! Ты сегодня не записал свои расходы. Не забудь занести их в бота для точной статистики! 💰",
+        "export_success": "📄 Вот твой отчет о транзакциях!",
+        "export_empty": "У тебя пока нет транзакций для экспорта."
     },
     "en": {
         "start": "👋 Hello! I am your AI financial assistant **ImDram**.\n\nI will help you control your budget in Armenia 🇦🇲\n\nChoose an action below or just write me a sum (e.g., `Refueled for 20k AMD` or `Salary 500$`)",
@@ -63,7 +69,13 @@ MESSAGES = {
         "del_btn": "❌ Delete",
         "forecast": "📈 Forecast for end of month:\n**{amount} AMD**",
         "savings": "💵 If you cut unnecessary expenses and invest at 10%, you could earn: **{amount} AMD** a year\nPlus a vacation trip or a new gadget! 🌴",
-        "advice_text": "• Category **{category}** exceeds the norm. You can save about {amount} AMD."
+        "advice_text": "• Category **{category}** exceeds the norm. You can save about {amount} AMD.",
+        "btn_week": "📅 Week",
+        "btn_month": "📅 Month",
+        "btn_year": "📅 Year",
+        "reminder": "⏰ Hi! You haven't logged your expenses today. Don't forget to track them for accurate statistics! 💰",
+        "export_success": "📄 Here is your transactions report!",
+        "export_empty": "You have no transactions to export yet."
     },
     "hy": {
         "start": "👋 Բարև: Ես քո AI ֆինանսական օգնականն եմ՝ **ImDram**-ը:\n\nԿօգնեմ քեզ վերահսկել բյուջեդ Հայաստանում 🇦🇲\n\nԸնտրիր գործողություն կամ պարզապես գրիր (օր.՝ `Տաքսի 2000 դրամ` կամ `Աշխատավարձ 500$`):",
@@ -96,7 +108,13 @@ MESSAGES = {
         "del_btn": "❌ Ջնջել",
         "forecast": "📈 Կանխատեսում ամսվա վերջում՝\n**{amount} AMD**",
         "savings": "💵 Եթե նվազեցնեք ավելորդ ծախսերը և ներդնեք 10%-ով, տարեկան կվաստակեք՝ **{amount} AMD**\nԴա հավասար է արձակուրդի կամ նոր սարքի 🌴",
-        "advice_text": "• **{category}** կատեգորիան գերազանցում է նորման։ Կարող եք խնայել մոտ {amount} AMD:"
+        "advice_text": "• **{category}** կատեգորիան գերազանցում է նորման։ Կարող եք խնայել մոտ {amount} AMD:",
+        "btn_week": "📅 Շաբաթ",
+        "btn_month": "📅 Ամիս",
+        "btn_year": "📅 Տարի",
+        "reminder": "⏰ Ողջույն: Այսօր դուք չեք գրանցել ձեր ծախսերը։ Մի մոռացեք գրանցել դրանք ճշգրիտ վիճակագրության համար: 💰",
+        "export_success": "📄 Ահա ձեր գործարքների հաշվետվությունը։",
+        "export_empty": "Դուք դեռ չունեք գործարքներ արտահանման համար։"
     }
 }
 

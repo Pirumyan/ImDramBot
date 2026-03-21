@@ -12,21 +12,17 @@ from logic.ai_parser import parse_expense_text, parse_audio_file
 from utils.locales import get_msg, get_category_name
 from datetime import datetime
 from aiogram import Bot
+from aiogram.types import FSInputFile
 import random
 import os
+import csv
+
 
 router = Router()
 
 class ExpenseState(StatesGroup):
     waiting_for_amount = State()
     waiting_for_income = State()
-
-SUPPORT_MESSAGES = [
-    "Молодец! 👏",
-    "Каждый драм под контролем. Отличная привычка! 💪",
-    "Твой кошелек говорит тебе спасибо! 😊",
-    "Порядок в финансах — порядок в жизни. Так держать! 🎯"
-]
 
 def get_main_menu(lang):
     builder = ReplyKeyboardBuilder()
@@ -85,42 +81,105 @@ async def cmd_rates(message: types.Message):
     rates = await get_all_rates()
     await wait_msg.edit_text(get_msg(lang, "rates_text", usd=rates.get("USD", "—"), eur=rates.get("EUR", "—"), rub=rates.get("RUB", "—")))
 
-@router.message(lambda msg: msg.text in [get_msg("ru", "btn_stats"), get_msg("en", "btn_stats"), get_msg("hy", "btn_stats")] or msg.text == "/stats")
-async def cmd_stats(message: types.Message):
-    lang = await db_manager.get_user_language(message.from_user.id)
-    now = datetime.now()
-    category_sums = await db_manager.get_monthly_expenses(message.from_user.id, now.year, now.month)
-    total_spent, total_income = await db_manager.get_total_per_period(message.from_user.id, now.year, now.month)
+def get_stats_keyboard(lang):
+    builder = InlineKeyboardBuilder()
+    builder.button(text=get_msg(lang, "btn_week"), callback_data="stats_week")
+    builder.button(text=get_msg(lang, "btn_month"), callback_data="stats_month")
+    builder.button(text=get_msg(lang, "btn_year"), callback_data="stats_year")
+    builder.adjust(3)
+    return builder.as_markup()
+
+async def send_stats(message_or_call, user_id, lang, period="month"):
+    cat_sums, total_spent, total_income = await db_manager.get_stats_by_period(user_id, period)
     
     if total_spent == 0 and total_income == 0:
-        await message.answer(get_msg(lang, "stats_empty"))
+        msg_text = get_msg(lang, "stats_empty")
+        if isinstance(message_or_call, types.Message):
+            await message_or_call.answer(msg_text, reply_markup=get_stats_keyboard(lang))
+        else:
+            await message_or_call.message.edit_text(msg_text, reply_markup=get_stats_keyboard(lang))
         return
     
-    msg = get_msg(lang, "stats_header", period=now.strftime('%B %Y'))
+    period_label = get_msg(lang, "btn_" + period)
+    msg = f"📊 **Статистика / {period_label}**\n\n"
     msg += get_msg(lang, "stats_income", amount=f"{int(total_income):,}")
     msg += get_msg(lang, "stats_expense", amount=f"{int(total_spent):,}")
-    
     balance = total_income - total_spent
     msg += get_msg(lang, "stats_balance", amount=f"{int(balance):,}")
     
-    analysis = analyze_expenses(total_spent, category_sums, lang=lang)
+    analysis = analyze_expenses(total_spent, cat_sums, lang=lang)
     if total_spent > 0:
         msg += "\n".join(analysis["report_lines"])
-        
-        forecast_msg = get_msg(lang, "forecast", amount=f"{analysis['forecast']:,}")
-        msg += f"\n\n{forecast_msg}"
-        
-        if analysis["advice"]:
-            savings_msg = get_msg(lang, "savings", amount=f"{analysis['potential_yearly_savings']:,}")
-            msg += "\n\n💡 " + "\n".join(analysis["advice"])
-            msg += f"\n\n{savings_msg}"
+        if period == "month":
+            forecast_msg = get_msg(lang, "forecast", amount=f"{analysis['forecast']:,}")
+            msg += f"\n\n{forecast_msg}"
+            if analysis["advice"]:
+                savings_msg = get_msg(lang, "savings", amount=f"{analysis['potential_yearly_savings']:,}")
+                msg += "\n\n💡 " + "\n".join(analysis["advice"])
+                msg += f"\n\n{savings_msg}"
     
-    if total_spent > 0:
-        chart_buf = generate_pie_chart(category_sums, total_spent)
-        photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
-        await message.answer_photo(photo, caption=msg, parse_mode="Markdown")
+    markup = get_stats_keyboard(lang)
+    if isinstance(message_or_call, types.Message):
+        if total_spent > 0:
+            chart_buf = generate_pie_chart(cat_sums, total_spent)
+            photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
+            await message_or_call.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
+        else:
+            await message_or_call.answer(msg, parse_mode="Markdown", reply_markup=markup)
     else:
-        await message.answer(msg, parse_mode="Markdown")
+        # Edit message if no photo is attached, else answer with new photo
+        if message_or_call.message.photo and total_spent > 0:
+            chart_buf = generate_pie_chart(cat_sums, total_spent)
+            photo = types.InputMediaPhoto(media=types.BufferedInputFile(chart_buf.read(), filename="chart.png"), caption=msg, parse_mode="Markdown")
+            await message_or_call.message.edit_media(media=photo, reply_markup=markup)
+        elif not message_or_call.message.photo and total_spent == 0:
+            await message_or_call.message.edit_text(msg, parse_mode="Markdown", reply_markup=markup)
+        else:
+            # Type changed (photo -> text or text -> photo)
+            await message_or_call.message.delete()
+            if total_spent > 0:
+                chart_buf = generate_pie_chart(cat_sums, total_spent)
+                photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
+                await message_or_call.message.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
+            else:
+                await message_or_call.message.answer(msg, parse_mode="Markdown", reply_markup=markup)
+
+@router.message(lambda msg: msg.text in [get_msg("ru", "btn_stats"), get_msg("en", "btn_stats"), get_msg("hy", "btn_stats")] or msg.text == "/stats")
+async def cmd_stats(message: types.Message):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    await send_stats(message, message.from_user.id, lang, "month")
+
+@router.callback_query(F.data.startswith("stats_"))
+async def process_stats(callback: types.CallbackQuery):
+    period = callback.data.split("_")[1]
+    lang = await db_manager.get_user_language(callback.from_user.id)
+    await send_stats(callback, callback.from_user.id, lang, period)
+    await callback.answer()
+
+@router.message(Command("export"))
+async def cmd_export(message: types.Message):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    transactions = await db_manager.get_all_transactions(message.from_user.id)
+    
+    if not transactions:
+        await message.answer(get_msg(lang, "export_empty"))
+        return
+        
+    os.makedirs("temp", exist_ok=True)
+    filename = f"temp/export_{message.from_user.id}.csv"
+    
+    with open(filename, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["ID", "Amount", "Category", "Date", "Type"])
+        for t in transactions:
+            writer.writerow(t)
+            
+    try:
+        doc = FSInputFile(filename)
+        await message.answer_document(doc, caption=get_msg(lang, "export_success"))
+    finally:
+        os.remove(filename)
+
 
 @router.message(lambda msg: msg.text in [get_msg("ru", "btn_history"), get_msg("en", "btn_history"), get_msg("hy", "btn_history")] or msg.text == "/history")
 async def cmd_history(message: types.Message):
@@ -199,8 +258,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
         msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
     
     if streak > 1:
-        msg += "\n" + random.choice(SUPPORT_MESSAGES) + "\n"
-        msg += get_msg(lang, "strike", strike=streak)
+        msg += "\n" + get_msg(lang, "strike", strike=streak)
     
     await callback.message.edit_text(msg)
     await state.clear()
@@ -250,8 +308,7 @@ async def process_voice(message: types.Message, state: FSMContext, bot: Bot):
                 msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
                 
             if streak > 1:
-                msg += "\n" + random.choice(SUPPORT_MESSAGES) + "\n"
-                msg += get_msg(lang, "strike", strike=streak)
+                msg += "\n" + get_msg(lang, "strike", strike=streak)
             await wait_msg.edit_text(msg)
             await state.clear()
         else:
@@ -267,6 +324,10 @@ async def process_voice(message: types.Message, state: FSMContext, bot: Bot):
     finally:
         if os.path.exists(local_file_path):
             os.remove(local_file_path)
+        try:
+            await message.delete()
+        except Exception:
+            pass
 
 @router.message(ExpenseState.waiting_for_amount)
 @router.message(ExpenseState.waiting_for_income)
@@ -337,8 +398,7 @@ async def process_text_or_amount(message: types.Message, state: FSMContext):
             msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
             
         if streak > 1:
-            msg += "\n" + random.choice(SUPPORT_MESSAGES) + "\n"
-            msg += get_msg(lang, "strike", strike=streak)
+            msg += "\n" + get_msg(lang, "strike", strike=streak)
         await wait_msg.edit_text(msg)
         await state.clear()
     else:
