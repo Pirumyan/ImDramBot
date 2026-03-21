@@ -4,3 +4,4 @@ python-dotenv
 aiosqlite
 aiohttp
 asyncpg
+google-generativeai

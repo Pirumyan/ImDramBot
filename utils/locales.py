@@ -1,0 +1,91 @@
+MESSAGES = {
+    "ru": {
+        "start": "👋 Привет! Я твой AI-финансовый помощник **ImDram**.\n\nЯ помогу тебе контролировать бюджет в Армении 🇦🇲\n\nВыбери действие снизу или просто напиши мне сумму (например: `Заправился на 20к AMD` или `Зарплата 500$`)",
+        "btn_expense": "💰 Расход",
+        "btn_income": "➕ Доход",
+        "btn_stats": "📊 Статистика",
+        "btn_history": "📜 История",
+        "btn_lang": "🌍 Язык",
+        "ask_amount": "Напиши сумму (например, `5000`) или целую фразу:",
+        "ask_income": "Напиши сумму дохода или откуда он пришел (например, `50000` или `Зарплата 100$`):",
+        "stats_empty": "За этот месяц пока нет расходов. Обязательно что-нибудь запиши! 😊",
+        "stats_header": "📊 **Статистика за {period}**\n\n",
+        "stats_income": "🟢 Доходы: **{amount} AMD**\n",
+        "stats_expense": "🔴 Расходы: **{amount} AMD**\n",
+        "stats_balance": "💳 Баланс: **{amount} AMD**\n\n",
+        "history_empty": "История операций пуста.",
+        "history_header": "📜 **Последние операции:**\n(Нажми ❌ под записью, чтобы удалить её)",
+        "deleted": "🗑 Запись удалена.",
+        "thinking": "🤔 Анализирую...",
+        "not_understood": "Не смог понять сумму. Напиши просто число (например: 5000):",
+        "saved_expense": "✅ AI записал расход: **{amount} AMD** в категорию **{category}**.",
+        "saved_income": "✅ AI записал доход: **{amount} AMD** (Категория: **{category}**).",
+        "strike": "🔥 У тебя страйк: **{strike} дней** подряд!",
+        "lang_changed": "✅ Язык успешно изменен на Русский!",
+        "choose_cat": "Выбери категорию:",
+        "err_sum": "Ошибка: сумма не найдена.",
+        "lang_prompt": "Выберите язык / Choose language / Ընտրեք լեզուն:"
+    },
+    "en": {
+        "start": "👋 Hello! I am your AI financial assistant **ImDram**.\n\nI will help you control your budget in Armenia 🇦🇲\n\nChoose an action below or just write me a sum (e.g., `Refueled for 20k AMD` or `Salary 500$`)",
+        "btn_expense": "💰 Expense",
+        "btn_income": "➕ Income",
+        "btn_stats": "📊 Statistics",
+        "btn_history": "📜 History",
+        "btn_lang": "🌍 Language",
+        "ask_amount": "Enter the amount (e.g., `5000`) or a whole phrase:",
+        "ask_income": "Enter the income amount or its source (e.g., `50000` or `Salary 100$`):",
+        "stats_empty": "No expenses for this month yet. Make sure to record something! 😊",
+        "stats_header": "📊 **Statistics for {period}**\n\n",
+        "stats_income": "🟢 Incomes: **{amount} AMD**\n",
+        "stats_expense": "🔴 Expenses: **{amount} AMD**\n",
+        "stats_balance": "💳 Balance: **{amount} AMD**\n\n",
+        "history_empty": "Transaction history is empty.",
+        "history_header": "📜 **Recent Operations:**\n(Click ❌ below a record to delete it)",
+        "deleted": "🗑 Record deleted.",
+        "thinking": "🤔 Analyzing...",
+        "not_understood": "Couldn't understand the amount. Enter just a number (e.g., 5000):",
+        "saved_expense": "✅ AI saved expense: **{amount} AMD** in category **{category}**.",
+        "saved_income": "✅ AI saved income: **{amount} AMD** (Category: **{category}**).",
+        "strike": "🔥 You have a streak of: **{strike} days** in a row!",
+        "lang_changed": "✅ Language successfully changed to English!",
+        "choose_cat": "Choose a category:",
+        "err_sum": "Error: amount not found.",
+        "lang_prompt": "Choose language:"
+    },
+    "hy": {
+        "start": "👋 Բարև: Ես քո AI ֆինանսական օգնականն եմ՝ **ImDram**-ը:\n\nԿօգնեմ քեզ վերահսկել բյուջեդ Հայաստանում 🇦🇲\n\nԸնտրիր գործողություն կամ պարզապես գրիր (օր.՝ `Տաքսի 2000 դրամ` կամ `Աշխատավարձ 500$`):",
+        "btn_expense": "💰 Ծախս",
+        "btn_income": "➕ Եկամուտ",
+        "btn_stats": "📊 Վիճակագրություն",
+        "btn_history": "📜 Պատմություն",
+        "btn_lang": "🌍 Լեզու",
+        "ask_amount": "Գրիր գումարը (օր.՝ `5000`) կամ ամբողջ նախադասությունը:",
+        "ask_income": "Գրիր եկամտի գումարը կամ աղբյուրը (օր.՝ `Աշխատավարձ 500000`):",
+        "stats_empty": "Այս ամիս դեռ գրառումներ չկան: Համոզվիր որ գրանցում ես ամեն ինչ 😊",
+        "stats_header": "📊 **Վիճակագրություն {period}**\n\n",
+        "stats_income": "🟢 Եկամուտներ: **{amount} AMD**\n",
+        "stats_expense": "🔴 Ծախսեր: **{amount} AMD**\n",
+        "stats_balance": "💳 Մնացորդ: **{amount} AMD**\n\n",
+        "history_empty": "Պատմությունը դատարկ է:",
+        "history_header": "📜 **Վերջին գործարքները:**\n(Սեղմիր ❌ գրառման տակ՝ ջնջելու համար)",
+        "deleted": "🗑 Գրառումը ջնջված է:",
+        "thinking": "🤔 Վերլուծում եմ...",
+        "not_understood": "Չկարողացա հասկանալ գումարը: Գրեք միայն թիվը (օրինակ 5000):",
+        "saved_expense": "✅ AI գրանցեց ծախս: **{amount} AMD** **{category}** կատեգորիայում։",
+        "saved_income": "✅ AI գրանցեց եկամուտ: **{amount} AMD** (Կատեգորիա՝ **{category}**)։",
+        "strike": "🔥 Դուք ունեք սթրայք՝ **{strike} օր** անընդմեջ։",
+        "lang_changed": "✅ Լեզուն հաջողությամբ փոխվեց հայերենի։",
+        "choose_cat": "Ընտրեք կատեգորիան:",
+        "err_sum": "Սխալ. գումարը չի գտնվել:",
+        "lang_prompt": "Ընտրեք լեզուն:"
+    }
+}
+
+def get_msg(lang, key, **kwargs):
+    if not lang or lang not in MESSAGES:
+        lang = "ru"
+    text = MESSAGES[lang].get(key, MESSAGES["ru"].get(key, key))
+    if kwargs:
+        return text.format(**kwargs)
+    return text

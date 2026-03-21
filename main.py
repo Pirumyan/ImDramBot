@@ -46,10 +46,14 @@ async def main():
     # Register handlers
     dp.include_router(base_handlers.router)
 
-    # Start polling
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    print("🚀 Бот ImDram запущен!")
-    await dp.start_polling(bot)
+    try:
+        # Start polling
+        logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+        print("🚀 Бот ImDram запущен!")
+        await dp.start_polling(bot)
+    finally:
+        await db_manager.close_pool()
+        print("🛑 Пул соединений базы данных закрыт.")
 
 if __name__ == "__main__":
     asyncio.run(main())

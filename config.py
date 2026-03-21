@@ -5,6 +5,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 CATEGORIES = {
     "1": "Еда 🍔",
@@ -26,4 +27,12 @@ NORMS = {
     "Транспорт 🚕": (0.1, 0.2)
 }
 
-ADMIN_ID = 416416790
+INCOME_CATEGORIES = {
+    "1": "Зарплата 💰",
+    "2": "Перевод 💸",
+    "3": "Кешбэк 🪙",
+    "4": "Крипта 💎",
+    "5": "Другое 📦"
+}
+
+ADMIN_ID = int(os.getenv("ADMIN_ID", 416416790))
