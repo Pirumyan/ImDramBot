@@ -27,7 +27,10 @@ MESSAGES = {
         "choose_cat": "Выбери категорию:",
         "err_sum": "Ошибка: сумма не найдена.",
         "lang_prompt": "Выберите язык / Choose language / Ընտրեք լեզուն:",
-        "del_btn": "❌ Удалить"
+        "del_btn": "❌ Удалить",
+        "forecast": "📈 Прогноз на конец месяца:\n**{amount} AMD**",
+        "savings": "💵 Если убрать лишние траты и инвестировать под 10%, за год можно заработать: **{amount} AMD**\nПлюс это поездка в отпуск или покупка нового гаджета! 🌴",
+        "advice_text": "• По категории **{category}** превышение нормы. Можно сэкономить около {amount} AMD."
     },
     "en": {
         "start": "👋 Hello! I am your AI financial assistant **ImDram**.\n\nI will help you control your budget in Armenia 🇦🇲\n\nChoose an action below or just write me a sum (e.g., `Refueled for 20k AMD` or `Salary 500$`)",
@@ -57,7 +60,10 @@ MESSAGES = {
         "choose_cat": "Choose a category:",
         "err_sum": "Error: amount not found.",
         "lang_prompt": "Choose language:",
-        "del_btn": "❌ Delete"
+        "del_btn": "❌ Delete",
+        "forecast": "📈 Forecast for end of month:\n**{amount} AMD**",
+        "savings": "💵 If you cut unnecessary expenses and invest at 10%, you could earn: **{amount} AMD** a year\nPlus a vacation trip or a new gadget! 🌴",
+        "advice_text": "• Category **{category}** exceeds the norm. You can save about {amount} AMD."
     },
     "hy": {
         "start": "👋 Բարև: Ես քո AI ֆինանսական օգնականն եմ՝ **ImDram**-ը:\n\nԿօգնեմ քեզ վերահսկել բյուջեդ Հայաստանում 🇦🇲\n\nԸնտրիր գործողություն կամ պարզապես գրիր (օր.՝ `Տաքսի 2000 դրամ` կամ `Աշխատավարձ 500$`):",
@@ -87,7 +93,10 @@ MESSAGES = {
         "choose_cat": "Ընտրեք կատեգորիան:",
         "err_sum": "Սխալ. գումարը չի գտնվել:",
         "lang_prompt": "Ընտրեք լեզուն:",
-        "del_btn": "❌ Ջնջել"
+        "del_btn": "❌ Ջնջել",
+        "forecast": "📈 Կանխատեսում ամսվա վերջում՝\n**{amount} AMD**",
+        "savings": "💵 Եթե նվազեցնեք ավելորդ ծախսերը և ներդնեք 10%-ով, տարեկան կվաստակեք՝ **{amount} AMD**\nԴա հավասար է արձակուրդի կամ նոր սարքի 🌴",
+        "advice_text": "• **{category}** կատեգորիան գերազանցում է նորման։ Կարող եք խնայել մոտ {amount} AMD:"
     }
 }
 

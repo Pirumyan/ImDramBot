@@ -101,7 +101,7 @@ async def cmd_stats(message: types.Message):
     balance = total_income - total_spent
     msg += get_msg(lang, "stats_balance", amount=f"{int(balance):,}")
     
-    analysis = analyze_expenses(total_spent, category_sums)
+    analysis = analyze_expenses(total_spent, category_sums, lang=lang)
     if total_spent > 0:
         msg += "\n".join(analysis["report_lines"])
         
