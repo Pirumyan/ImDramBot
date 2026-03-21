@@ -1,20 +1,23 @@
 import matplotlib.pyplot as plt
 import io
 from config import NORMS
+from utils.locales import get_category_name
 
-def generate_pie_chart(category_sums, total_spent):
-    labels = [c for c, _ in category_sums]
+def generate_pie_chart(category_sums, total_spent, lang):
+    labels = [get_category_name(c, lang) for c, _ in category_sums]
+    original_labels = [c for c, _ in category_sums]
     amounts = [a for _, a in category_sums]
     
     # Sort by amount for better visual
-    data = sorted(zip(labels, amounts), key=lambda x: x[1], reverse=True)
+    data = sorted(zip(labels, amounts, original_labels), key=lambda x: x[1], reverse=True)
     labels = [d[0] for d in data]
     amounts = [d[1] for d in data]
+    original_labels = [d[2] for d in data]
     
     colors = []
-    for label, amount in zip(labels, amounts):
+    for label, amount, orig_label in zip(labels, amounts, original_labels):
         pct = (amount / total_spent) if total_spent > 0 else 0
-        norm = NORMS.get(label)
+        norm = NORMS.get(orig_label)
         if norm:
             _, max_norm = norm
             if pct > max_norm:

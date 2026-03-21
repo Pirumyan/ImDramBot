@@ -101,7 +101,7 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
         return
     
     period_label = get_msg(lang, "btn_" + period)
-    msg = f"📊 **Статистика / {period_label}**\n\n"
+    msg = get_msg(lang, "stats_header", period=period_label)
     msg += get_msg(lang, "stats_income", amount=f"{int(total_income):,}")
     msg += get_msg(lang, "stats_expense", amount=f"{int(total_spent):,}")
     balance = total_income - total_spent
@@ -113,15 +113,16 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
         if period == "month":
             forecast_msg = get_msg(lang, "forecast", amount=f"{analysis['forecast']:,}")
             msg += f"\n\n{forecast_msg}"
-            if analysis["advice"]:
-                savings_msg = get_msg(lang, "savings", amount=f"{analysis['potential_yearly_savings']:,}")
-                msg += "\n\n💡 " + "\n".join(analysis["advice"])
-                msg += f"\n\n{savings_msg}"
+            
+            from logic.ai_parser import generate_financial_advice
+            ai_advice = await generate_financial_advice(total_spent, cat_sums, lang)
+            if ai_advice:
+                msg += f"\n\n🤖 **AI:** {ai_advice}"
     
     markup = get_stats_keyboard(lang)
     if isinstance(message_or_call, types.Message):
         if total_spent > 0:
-            chart_buf = generate_pie_chart(cat_sums, total_spent)
+            chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
             photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
             await message_or_call.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
         else:
@@ -129,7 +130,7 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
     else:
         # Edit message if no photo is attached, else answer with new photo
         if message_or_call.message.photo and total_spent > 0:
-            chart_buf = generate_pie_chart(cat_sums, total_spent)
+            chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
             photo = types.InputMediaPhoto(media=types.BufferedInputFile(chart_buf.read(), filename="chart.png"), caption=msg, parse_mode="Markdown")
             await message_or_call.message.edit_media(media=photo, reply_markup=markup)
         elif not message_or_call.message.photo and total_spent == 0:
@@ -138,7 +139,7 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
             # Type changed (photo -> text or text -> photo)
             await message_or_call.message.delete()
             if total_spent > 0:
-                chart_buf = generate_pie_chart(cat_sums, total_spent)
+                chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
                 photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
                 await message_or_call.message.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
             else:

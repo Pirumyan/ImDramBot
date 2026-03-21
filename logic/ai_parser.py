@@ -116,3 +116,30 @@ async def parse_audio_file(file_path: str) -> dict:
     except Exception as e:
         logging.error(f"Error parsing audio with Gemini: {e}")
         return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
+
+async def generate_financial_advice(total_spent, items, lang):
+    if not GEMINI_API_KEY:
+        return ""
+    
+    try:
+        model = genai.GenerativeModel(model_name="gemini-2.5-flash", generation_config=generation_config)
+        prompt = f"""
+        Ты профессиональный финансовый аналитик. 
+        Пользователь потратил всего: {total_spent} AMD.
+        Разбивка по категориям:
+        {items}
+        
+        Напиши ОДНО короткое, четкое и интересное предложение-совет по этим расходам.
+        Не пиши банальности вроде "инвестируйте 10%". Дай оригинальное или практичное мнение именно о его категориях (например, если много тратит на Еду - посоветуй что-то конкретное и профессиональное). 
+        Обязательно ответь на языке с кодом: "{lang}" (ru - Русский, en - Английский, hy - Армянский).
+        Не используй markdown, просто текст.
+        """
+        response = await model.generate_content_async(prompt)
+        text = response.text.strip()
+        # Clean up possible quotes
+        if text.startswith('"') and text.endswith('"'):
+            text = text[1:-1]
+        return text
+    except Exception as e:
+        logging.error(f"Ошибка генерации совета Gemini: {e}")
+        return ""
