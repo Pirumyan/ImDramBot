@@ -289,47 +289,13 @@ async def cmd_history(message: types.Message):
         cat_translated = get_category_name(cat_ru, lang, is_income=(type_str == "income"))
         
         builder = InlineKeyboardBuilder()
-        builder.button(text=get_msg(lang, "edit_btn"), callback_data=f"edit_{type_str}_{item_id}")
         builder.button(text=get_msg(lang, "del_btn"), callback_data=f"del_{type_str}_{item_id}")
+        builder.button(text=get_msg(lang, "edit_btn"), callback_data=f"edit_{'e' if type_str == 'expense' else 'i'}_{item_id}")
         builder.adjust(2)
         
         emoji = "🔴" if type_str == "expense" else "🟢"
         text = f"{emoji} {date_fmt} — **{int(amount):,} AMD** ({cat_translated})"
         await message.answer(text, reply_markup=builder.as_markup())
-
-@router.callback_query(F.data.startswith("edit_"))
-async def process_edit_start(callback: types.CallbackQuery, state: FSMContext):
-    _, type_str, item_id = callback.data.split("_")
-    lang = await db_manager.get_user_language(callback.from_user.id)
-    await state.update_data(edit_id=item_id, edit_type=type_str)
-    await callback.message.answer(get_msg(lang, "edit_prompt"))
-    await state.set_state(ExpenseState.waiting_for_edit)
-    await callback.answer()
-
-@router.message(ExpenseState.waiting_for_edit)
-async def process_edit_amount(message: types.Message, state: FSMContext):
-    lang = await db_manager.get_user_language(message.from_user.id)
-    if message.text.isdigit():
-        data = await state.get_data()
-        item_id = int(data.get("edit_id"))
-        type_str = data.get("edit_type")
-        
-        # Fetch actual transaction to get category
-        trans = await db_manager.get_transaction(item_id, message.from_user.id, type_str)
-        cat_name = trans['category'] if trans else "..."
-        if type_str == 'income':
-            cat_name = trans['source'] if trans else "..."
-            
-        await db_manager.update_transaction(item_id, message.from_user.id, type_str, message.text)
-        
-        from utils.locales import get_category_name
-        ui_cat = get_category_name(cat_name, lang, is_income=(type_str == 'income'))
-        
-        msg_key = "saved_expense" if type_str == "expense" else "saved_income"
-        await message.answer("✅ " + get_msg(lang, msg_key, amount=message.text, category=ui_cat), reply_markup=get_main_menu(lang))
-        await state.clear()
-    else:
-        await message.answer(get_msg(lang, "not_understood"))
 
 @router.callback_query(F.data.startswith("del_"))
 async def process_delete(callback: types.CallbackQuery):
@@ -339,6 +305,42 @@ async def process_delete(callback: types.CallbackQuery):
     lang = await db_manager.get_user_language(callback.from_user.id)
     await callback.message.edit_text(get_msg(lang, "deleted"))
     await callback.answer()
+
+@router.callback_query(F.data.startswith("edit_"))
+async def process_edit_start(callback: types.CallbackQuery, state: FSMContext):
+    lang = await db_manager.get_user_language(callback.from_user.id)
+    parts = callback.data.split("_")
+    type_code, item_id = parts[1], parts[2]
+    type_str = "expense" if type_code == "e" else "income"
+    
+    await state.update_data(edit_id=item_id, edit_type=type_str)
+    await state.set_state(ExpenseState.waiting_for_edit)
+    await callback.message.answer(get_msg(lang, "edit_prompt"))
+    await callback.answer()
+
+@router.message(ExpenseState.waiting_for_edit)
+async def process_edit_amount(message: types.Message, state: FSMContext):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    if message.text.replace('.', '', 1).isdigit():
+        data = await state.get_data()
+        item_id = int(data.get("edit_id"))
+        type_str = data.get("edit_type")
+        
+        # Fetch actual transaction to get category for the confirmation message
+        trans = await db_manager.get_transaction(item_id, message.from_user.id, type_str)
+        cat_name = "..."
+        if trans:
+            cat_name = trans['category'] if type_str == 'expense' else trans['source']
+            
+        await db_manager.update_transaction(item_id, message.from_user.id, type_str, message.text)
+        
+        ui_cat = get_category_name(cat_name, lang, is_income=(type_str == 'income'))
+        
+        msg_key = "saved_expense" if type_str == "expense" else "saved_income"
+        await message.answer("✅ " + get_msg(lang, msg_key, amount=message.text, category=ui_cat), reply_markup=get_main_menu(lang))
+        await state.clear()
+    else:
+        await message.answer(get_msg(lang, "not_understood"))
 
 @router.message(Command("admin_stats"))
 async def cmd_admin_stats(message: types.Message):
