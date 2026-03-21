@@ -43,7 +43,13 @@ MESSAGES = {
         "budget_warn_close": "⚠️ **Внимание!** Вы потратили уже {spent} AMD и почти исчерпали бюджет ({budget} AMD).",
         "budget_warn_exceeded": "🚨 **Лимит превышен!** Вы потратили {spent} AMD, что больше вашего бюджета ({budget} AMD)!",
         "btn_export": "📄 Экспорт",
-        "btn_budget": "🎯 Бюджет"
+        "btn_budget": "🎯 Бюджет",
+        "budget_menu": "🎯 **Управление бюджетом**\n\nТвой лимит: **{amount} AMD**\nИспользовано: **{spent} AMD** ({percent}%)\n\nВыбери действие:",
+        "budget_btn_set": "⚙️ Изменить лимит",
+        "budget_btn_reset": "🗑 Сбросить",
+        "budget_progress": "\n📈 Прогресс: `{bar}` {percent}%\n",
+        "edit_btn": "✏️ Правка",
+        "edit_prompt": "Введите новую сумму для этой операции (только число):"
     },
     "en": {
         "start": "👋 Hello! I am your AI financial assistant **ImDram**.\n\nI will help you control your budget in Armenia 🇦🇲\n\nChoose an action below or just write me a sum (e.g., `Refueled for 20k AMD` or `Salary 500$`)",
@@ -89,7 +95,13 @@ MESSAGES = {
         "budget_warn_close": "⚠️ **Warning!** You have spent {spent} AMD and are close to your limit ({budget} AMD).",
         "budget_warn_exceeded": "🚨 **Budget exceeded!** You have spent {spent} AMD, which is over your budget ({budget} AMD)!",
         "btn_export": "📄 Export",
-        "btn_budget": "🎯 Budget"
+        "btn_budget": "🎯 Budget",
+        "budget_menu": "🎯 **Budget Management**\n\nYour limit: **{amount} AMD**\nUsed: **{spent} AMD** ({percent}%)\n\nChoose an action:",
+        "budget_btn_set": "⚙️ Change Limit",
+        "budget_btn_reset": "🗑 Reset",
+        "budget_progress": "\n📈 Progress: `{bar}` {percent}%\n",
+        "edit_btn": "✏️ Edit",
+        "edit_prompt": "Enter the new amount for this operation (number only):"
     },
     "hy": {
         "start": "👋 Բարև: Ես քո AI ֆինանսական օգնականն եմ՝ **ImDram**-ը:\n\nԿօգնեմ քեզ վերահսկել բյուջեդ Հայաստանում 🇦🇲\n\nԸնտրիր գործողություն կամ պարզապես գրիր (օր.՝ `Տաքսի 2000 դրամ` կամ `Աշխատավարձ 500$`):",
@@ -135,7 +147,13 @@ MESSAGES = {
         "budget_warn_close": "⚠️ **Ուշադրություն:** Դուք ծախսել եք {spent} AMD և մոտենում եք ձեր լիմիտին ({budget} AMD):",
         "budget_warn_exceeded": "🚨 **Լիմիտը գերազանցվեց:** Դուք ծախսել եք {spent} AMD, որն ավելին է ձեր բյուջեից ({budget} AMD):",
         "btn_export": "📄 Արտահանում",
-        "btn_budget": "🎯 Բյուջե"
+        "btn_budget": "🎯 Բյուջե",
+        "budget_menu": "🎯 **Բյուջեի կառավարում**\n\nՔո լիմիտը՝ **{amount} AMD**\nԾախսված է՝ **{spent} AMD** ({percent}%)\n\nԸնտրիր գործողություն․",
+        "budget_btn_set": "⚙️ Փոխել լիմիտը",
+        "budget_btn_reset": "🗑 Ջնջել",
+        "budget_progress": "\n📈 Ընթացքը՝ `{bar}` {percent}%\n",
+        "edit_btn": "✏️ Փոփոխել",
+        "edit_prompt": "Մուտքագրեք նոր գումարը այս գործողության համար (միայն թիվ)․"
     }
 }
 

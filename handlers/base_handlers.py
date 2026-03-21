@@ -23,6 +23,8 @@ router = Router()
 class ExpenseState(StatesGroup):
     waiting_for_amount = State()
     waiting_for_income = State()
+    waiting_for_budget = State()
+    waiting_for_edit = State()
 
 def get_main_menu(lang):
     builder = ReplyKeyboardBuilder()
@@ -112,6 +114,17 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
     analysis = analyze_expenses(total_spent, cat_sums, lang=lang)
     if total_spent > 0:
         msg += "\n".join(analysis["report_lines"])
+        
+        # Budget Progress Bar
+        budget = await db_manager.get_user_budget(user_id)
+        if budget > 0:
+            percent = int((total_spent / budget) * 100)
+            bar_length = 10
+            filled_length = int(bar_length * total_spent // budget)
+            if filled_length > bar_length: filled_length = bar_length
+            bar = "▰" * filled_length + "▱" * (bar_length - filled_length)
+            msg += get_msg(lang, "budget_progress", bar=bar, percent=percent)
+
         if period == "month":
             forecast_msg = get_msg(lang, "forecast", amount=f"{analysis['forecast']:,}")
             msg += f"\n\n{forecast_msg}"
@@ -182,17 +195,47 @@ async def process_stats(callback: types.CallbackQuery):
 @router.message(Command("budget"))
 async def cmd_budget(message: types.Message):
     lang = await db_manager.get_user_language(message.from_user.id)
-    parts = message.text.split()
-    if len(parts) == 2 and parts[1].isdigit():
-        budget = float(parts[1])
+    budget = await db_manager.get_user_budget(message.from_user.id)
+    _, spent, _ = await db_manager.get_stats_by_period(message.from_user.id, "month")
+    
+    percent = int((spent / budget * 100)) if budget > 0 else 0
+    bar_length = 10
+    filled_length = int(bar_length * spent // budget) if budget > 0 else 0
+    if filled_length > bar_length: filled_length = bar_length
+    bar = "▰" * filled_length + "▱" * (bar_length - filled_length)
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text=get_msg(lang, "budget_btn_set"), callback_data="budget_set_prompt")
+    builder.button(text=get_msg(lang, "budget_btn_reset"), callback_data="budget_reset")
+    builder.adjust(1)
+    
+    text = get_msg(lang, "budget_menu", amount=f"{int(budget):,}", spent=f"{int(spent):,}", percent=percent)
+    text += get_msg(lang, "budget_progress", bar=bar, percent=percent)
+    
+    await message.answer(text, reply_markup=builder.as_markup())
+
+@router.callback_query(F.data == "budget_set_prompt")
+async def process_budget_set_prompt(callback: types.CallbackQuery, state: FSMContext):
+    lang = await db_manager.get_user_language(callback.from_user.id)
+    await callback.message.edit_text(get_msg(lang, "ask_amount"))
+    await state.set_state(ExpenseState.waiting_for_budget)
+
+@router.callback_query(F.data == "budget_reset")
+async def process_budget_reset(callback: types.CallbackQuery):
+    lang = await db_manager.get_user_language(callback.from_user.id)
+    await db_manager.set_user_budget(callback.from_user.id, 0)
+    await callback.message.edit_text(get_msg(lang, "budget_set", amount=0))
+
+@router.message(ExpenseState.waiting_for_budget)
+async def process_budget_input(message: types.Message, state: FSMContext):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    if message.text.isdigit():
+        budget = float(message.text)
         await db_manager.set_user_budget(message.from_user.id, budget)
-        await message.answer(get_msg(lang, "budget_set", amount=f"{int(budget):,}"))
+        await message.answer(get_msg(lang, "budget_set", amount=f"{int(budget):,}"), reply_markup=get_main_menu(lang))
+        await state.clear()
     else:
-        budget = await db_manager.get_user_budget(message.from_user.id)
-        if budget > 0:
-            await message.answer(get_msg(lang, "budget_status", amount=f"{int(budget):,}"))
-        else:
-            await message.answer(get_msg(lang, "budget_empty"))
+        await message.answer(get_msg(lang, "not_understood"))
 
 @router.message(lambda msg: msg.text in [get_msg("ru", "btn_budget"), get_msg("en", "btn_budget"), get_msg("hy", "btn_budget")])
 async def btn_budget(message: types.Message):
@@ -246,11 +289,47 @@ async def cmd_history(message: types.Message):
         cat_translated = get_category_name(cat_ru, lang, is_income=(type_str == "income"))
         
         builder = InlineKeyboardBuilder()
+        builder.button(text=get_msg(lang, "edit_btn"), callback_data=f"edit_{type_str}_{item_id}")
         builder.button(text=get_msg(lang, "del_btn"), callback_data=f"del_{type_str}_{item_id}")
+        builder.adjust(2)
         
         emoji = "🔴" if type_str == "expense" else "🟢"
         text = f"{emoji} {date_fmt} — **{int(amount):,} AMD** ({cat_translated})"
         await message.answer(text, reply_markup=builder.as_markup())
+
+@router.callback_query(F.data.startswith("edit_"))
+async def process_edit_start(callback: types.CallbackQuery, state: FSMContext):
+    _, type_str, item_id = callback.data.split("_")
+    lang = await db_manager.get_user_language(callback.from_user.id)
+    await state.update_data(edit_id=item_id, edit_type=type_str)
+    await callback.message.answer(get_msg(lang, "edit_prompt"))
+    await state.set_state(ExpenseState.waiting_for_edit)
+    await callback.answer()
+
+@router.message(ExpenseState.waiting_for_edit)
+async def process_edit_amount(message: types.Message, state: FSMContext):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    if message.text.isdigit():
+        data = await state.get_data()
+        item_id = int(data.get("edit_id"))
+        type_str = data.get("edit_type")
+        
+        # Fetch actual transaction to get category
+        trans = await db_manager.get_transaction(item_id, message.from_user.id, type_str)
+        cat_name = trans['category'] if trans else "..."
+        if type_str == 'income':
+            cat_name = trans['source'] if trans else "..."
+            
+        await db_manager.update_transaction(item_id, message.from_user.id, type_str, message.text)
+        
+        from utils.locales import get_category_name
+        ui_cat = get_category_name(cat_name, lang, is_income=(type_str == 'income'))
+        
+        msg_key = "saved_expense" if type_str == "expense" else "saved_income"
+        await message.answer("✅ " + get_msg(lang, msg_key, amount=message.text, category=ui_cat), reply_markup=get_main_menu(lang))
+        await state.clear()
+    else:
+        await message.answer(get_msg(lang, "not_understood"))
 
 @router.callback_query(F.data.startswith("del_"))
 async def process_delete(callback: types.CallbackQuery):

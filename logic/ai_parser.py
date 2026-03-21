@@ -44,7 +44,7 @@ async def parse_expense_text(text: str) -> dict:
         
     try:
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash", 
+            model_name="gemini-1.5-flash", 
             generation_config=generation_config,
             system_instruction=SYSTEM_PROMPT
         )
@@ -69,19 +69,20 @@ async def parse_expense_text(text: str) -> dict:
             "type": data.get("type", "expense"),
             "amount": amount,
             "currency": data.get("currency", "AMD"),
-            "category": data.get("category")
+            "category": data.get("category"),
+            "subcategory": data.get("subcategory")
         }
     except Exception as e:
         logging.error(f"Error parsing text with Gemini: {e}")
-        return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
+        return {"type": "expense", "amount": None, "currency": "AMD", "category": None, "subcategory": None}
 
 async def parse_audio_file(file_path: str) -> dict:
     if not GEMINI_API_KEY:
-        return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
+        return {"type": "expense", "amount": None, "currency": "AMD", "category": None, "subcategory": None}
         
     try:
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash", 
+            model_name="gemini-1.5-flash", 
             generation_config=generation_config,
             system_instruction=SYSTEM_PROMPT
         )
@@ -126,7 +127,7 @@ async def generate_financial_advice(total_spent, items, lang):
         return ""
     
     try:
-        model = genai.GenerativeModel(model_name="gemini-2.5-flash", generation_config=generation_config)
+        model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=generation_config)
         prompt = f"""
         Ты профессиональный финансовый аналитик. 
         Пользователь потратил всего: {total_spent} AMD.

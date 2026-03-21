@@ -188,6 +188,20 @@ async def delete_transaction(item_id, user_id, type_str):
             item_id, user_id
         )
 
+async def update_transaction(item_id, user_id, type_str, new_amount):
+    async with pool.acquire() as conn:
+        table = 'expenses' if type_str == 'expense' else 'incomes'
+        await conn.execute(
+            f'UPDATE {table} SET amount = $1 WHERE id = $2 AND user_id = $3',
+            float(new_amount), item_id, user_id
+        )
+
+async def get_transaction(item_id, user_id, type_str):
+    async with pool.acquire() as conn:
+        table = 'expenses' if type_str == 'expense' else 'incomes'
+        row = await conn.fetchrow(f'SELECT * FROM {table} WHERE id = $1 AND user_id = $2', item_id, user_id)
+        return row
+
 async def get_user_count():
     async with pool.acquire() as conn:
         row = await conn.fetchrow('SELECT COUNT(*) FROM users')
