@@ -8,10 +8,12 @@ from config import CATEGORIES, INCOME_CATEGORIES, ADMIN_ID
 from logic.analyzer import analyze_expenses
 from logic.currency import convert_to_amd, get_all_rates
 from utils.charts import generate_pie_chart
-from logic.ai_parser import parse_expense_text
+from logic.ai_parser import parse_expense_text, parse_audio_file
 from utils.locales import get_msg, get_category_name
 from datetime import datetime
+from aiogram import Bot
 import random
+import os
 
 router = Router()
 
@@ -203,6 +205,68 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text(msg)
     await state.clear()
     await callback.answer()
+
+@router.message(F.voice)
+async def process_voice(message: types.Message, state: FSMContext, bot: Bot):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    wait_msg = await message.answer(get_msg(lang, "thinking"))
+    
+    file_id = message.voice.file_id
+    file = await bot.get_file(file_id)
+    file_path = file.file_path
+    
+    # Create temp directory if it doesn't exist
+    os.makedirs("temp", exist_ok=True)
+    local_file_path = f"temp/{file_id}.ogg"
+    
+    await bot.download_file(file_path, local_file_path)
+    
+    try:
+        parsed = await parse_audio_file(local_file_path)
+        
+        amount = parsed.get("amount")
+        category = parsed.get("category")
+        parsed_type = parsed.get("type", "expense")
+        currency = parsed.get("currency", "AMD")
+        
+        if not amount:
+            await wait_msg.edit_text(get_msg(lang, "not_understood"))
+            return
+
+        if currency != "AMD":
+            from logic.currency import convert_to_amd
+            amount = await convert_to_amd(amount, currency)
+            
+        dicts = INCOME_CATEGORIES if parsed_type == "income" else CATEGORIES
+            
+        if category and category in dicts.values():
+            if parsed_type == "income":
+                streak = await db_manager.add_income(message.from_user.id, amount, category)
+                ui_category = get_category_name(category, lang, is_income=True)
+                msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=ui_category)
+            else:
+                streak = await db_manager.add_expense(message.from_user.id, amount, category)
+                ui_category = get_category_name(category, lang, is_income=False)
+                msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
+                
+            if streak > 1:
+                msg += "\n" + random.choice(SUPPORT_MESSAGES) + "\n"
+                msg += get_msg(lang, "strike", strike=streak)
+            await wait_msg.edit_text(msg)
+            await state.clear()
+        else:
+            await state.update_data(amount=amount)
+            builder = InlineKeyboardBuilder()
+            type_lbl = "income" if parsed_type == "income" else "expense"
+            for key, name in dicts.items():
+                btn_text = get_category_name(key, lang, is_income=(type_lbl=="income"))
+                builder.button(text=btn_text, callback_data=f"cat_{type_lbl}_{key}")
+            builder.adjust(2)
+            await wait_msg.edit_text(f"{int(amount):,} AMD. " + get_msg(lang, "choose_cat"), reply_markup=builder.as_markup())
+            
+    finally:
+        if os.path.exists(local_file_path):
+            os.remove(local_file_path)
 
 @router.message(ExpenseState.waiting_for_amount)
 @router.message(ExpenseState.waiting_for_income)

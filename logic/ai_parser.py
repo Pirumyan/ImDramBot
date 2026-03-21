@@ -71,3 +71,48 @@ async def parse_expense_text(text: str) -> dict:
     except Exception as e:
         logging.error(f"Error parsing text with Gemini: {e}")
         return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
+
+async def parse_audio_file(file_path: str) -> dict:
+    if not GEMINI_API_KEY:
+        return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
+        
+    try:
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash", 
+            generation_config=generation_config,
+            system_instruction=SYSTEM_PROMPT
+        )
+        
+        # Upload the file to Gemini
+        sample_file = genai.upload_file(path=file_path)
+        
+        # Generate content from audio
+        response = await model.generate_content_async([sample_file, "Extract financial data from this audio record."])
+        
+        # Clean up the file from Gemini storage (optional but good practice)
+        genai.delete_file(sample_file.name)
+        
+        result_text = response.text.strip()
+        
+        if result_text.startswith("```json"):
+            result_text = result_text[7:]
+        if result_text.startswith("```"):
+            result_text = result_text[3:]
+        if result_text.endswith("```"):
+            result_text = result_text[:-3]
+            
+        data = json.loads(result_text.strip())
+        
+        amount = data.get("amount")
+        if amount is not None:
+            amount = float(amount)
+            
+        return {
+            "type": data.get("type", "expense"),
+            "amount": amount,
+            "currency": data.get("currency", "AMD"),
+            "category": data.get("category")
+        }
+    except Exception as e:
+        logging.error(f"Error parsing audio with Gemini: {e}")
+        return {"type": "expense", "amount": None, "currency": "AMD", "category": None}
