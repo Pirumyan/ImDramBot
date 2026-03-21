@@ -6,10 +6,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from database import db_manager
 from config import CATEGORIES, INCOME_CATEGORIES, ADMIN_ID
 from logic.analyzer import analyze_expenses
-from logic.currency import convert_to_amd
+from logic.currency import convert_to_amd, get_all_rates
 from utils.charts import generate_pie_chart
 from logic.ai_parser import parse_expense_text
-from utils.locales import get_msg
+from utils.locales import get_msg, get_category_name
 from datetime import datetime
 import random
 
@@ -32,8 +32,9 @@ def get_main_menu(lang):
     builder.button(text=get_msg(lang, "btn_income"))
     builder.button(text=get_msg(lang, "btn_stats"))
     builder.button(text=get_msg(lang, "btn_history"))
+    builder.button(text=get_msg(lang, "btn_rates"))
     builder.button(text=get_msg(lang, "btn_lang"))
-    builder.adjust(2, 2, 1)
+    builder.adjust(2, 2, 2)
     return builder.as_markup(resize_keyboard=True)
 
 @router.message(Command("start"))
@@ -74,6 +75,13 @@ async def ask_income(message: types.Message, state: FSMContext):
     lang = await db_manager.get_user_language(message.from_user.id)
     await message.answer(get_msg(lang, "ask_income"))
     await state.set_state(ExpenseState.waiting_for_income)
+
+@router.message(lambda msg: msg.text in [get_msg("ru", "btn_rates"), get_msg("en", "btn_rates"), get_msg("hy", "btn_rates")] or msg.text == "/rates")
+async def cmd_rates(message: types.Message):
+    lang = await db_manager.get_user_language(message.from_user.id)
+    wait_msg = await message.answer(get_msg(lang, "thinking"))
+    rates = await get_all_rates()
+    await wait_msg.edit_text(get_msg(lang, "rates_text", usd=rates.get("USD", "—"), eur=rates.get("EUR", "—"), rub=rates.get("RUB", "—")))
 
 @router.message(lambda msg: msg.text in [get_msg("ru", "btn_stats"), get_msg("en", "btn_stats"), get_msg("hy", "btn_stats")] or msg.text == "/stats")
 async def cmd_stats(message: types.Message):
@@ -123,15 +131,17 @@ async def cmd_history(message: types.Message):
     
     await message.answer(get_msg(lang, "history_header"))
     
-    for item_id, amount, cat, date_str, type_str in recent:
+    for item_id, amount, cat_ru, date_str, type_str in recent:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         date_fmt = date_obj.strftime("%d.%m %H:%M")
         
+        cat_translated = get_category_name(cat_ru, lang, is_income=(type_str == "income"))
+        
         builder = InlineKeyboardBuilder()
-        builder.button(text=f"❌ Удалить", callback_data=f"del_{type_str}_{item_id}")
+        builder.button(text=get_msg(lang, "del_btn"), callback_data=f"del_{type_str}_{item_id}")
         
         emoji = "🔴" if type_str == "expense" else "🟢"
-        text = f"{emoji} {date_fmt} — **{int(amount):,} AMD** ({cat})"
+        text = f"{emoji} {date_fmt} — **{int(amount):,} AMD** ({cat_translated})"
         await message.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("del_"))
@@ -152,17 +162,21 @@ async def cmd_admin_stats(message: types.Message):
 
 @router.callback_query(F.data.startswith("cat_"))
 async def process_category(callback: types.CallbackQuery, state: FSMContext):
-    cat_id = callback.data.split("_")[1]
+    parts = callback.data.split("_")
+    if len(parts) >= 3:
+        type_str = parts[1]
+        cat_id = parts[2]
+    else:
+        type_str = "expense"
+        cat_id = parts[1]
     
-    # Check if category is expense or income by searching dicts
     category = "Unknown"
-    is_income = False
+    is_income = (type_str == "income")
     
-    if cat_id in CATEGORIES.values():
-        category = cat_id
-    elif cat_id in INCOME_CATEGORIES.values():
-        category = cat_id
-        is_income = True
+    if not is_income and cat_id in CATEGORIES:
+        category = CATEGORIES[cat_id]
+    elif is_income and cat_id in INCOME_CATEGORIES:
+        category = INCOME_CATEGORIES[cat_id]
         
     data = await state.get_data()
     amount = data.get("amount", 0)
@@ -173,12 +187,14 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer(get_msg(lang, "err_sum"), show_alert=True)
         return
 
+    ui_category = get_category_name(cat_id, lang, is_income=is_income)
+
     if is_income:
         streak = await db_manager.add_income(callback.from_user.id, amount, category)
-        msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=category)
+        msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=ui_category)
     else:
         streak = await db_manager.add_expense(callback.from_user.id, amount, category)
-        msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=category)
+        msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
     
     if streak > 1:
         msg += "\n" + random.choice(SUPPORT_MESSAGES) + "\n"
@@ -194,10 +210,9 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext):
 async def process_text_or_amount(message: types.Message, state: FSMContext):
     lang = await db_manager.get_user_language(message.from_user.id)
     
-    # Ignore keyboard button messages
     ignore_texts = [
         get_msg(l, btn) for l in ["ru", "en", "hy"] 
-        for btn in ["btn_expense", "btn_income", "btn_stats", "btn_history", "btn_lang"]
+        for btn in ["btn_expense", "btn_income", "btn_stats", "btn_history", "btn_lang", "btn_rates"]
     ]
     if message.text in ignore_texts:
         return
@@ -217,15 +232,16 @@ async def process_text_or_amount(message: types.Message, state: FSMContext):
         
         builder = InlineKeyboardBuilder()
         dicts = INCOME_CATEGORIES if forced_type == "income" else CATEGORIES
+        type_lbl = "income" if forced_type == "income" else "expense"
         
         for key, name in dicts.items():
-            builder.button(text=name, callback_data=f"cat_{name}")
+            btn_text = get_category_name(key, lang, is_income=(type_lbl=="income"))
+            builder.button(text=btn_text, callback_data=f"cat_{type_lbl}_{key}")
         builder.adjust(2)
         
         await wait_msg.edit_text(get_msg(lang, "choose_cat"), reply_markup=builder.as_markup())
         return
 
-    # Use Gemini
     parsed = await parse_expense_text(message.text)
     
     amount = parsed.get("amount")
@@ -238,9 +254,9 @@ async def process_text_or_amount(message: types.Message, state: FSMContext):
     
     if not amount:
         await wait_msg.edit_text(get_msg(lang, "not_understood"))
+        await state.clear()
         return
         
-    # Convert currency if needed
     if currency != "AMD":
         amount = await convert_to_amd(amount, currency)
         
@@ -249,10 +265,12 @@ async def process_text_or_amount(message: types.Message, state: FSMContext):
     if category and category in dicts.values():
         if parsed_type == "income":
             streak = await db_manager.add_income(message.from_user.id, amount, category)
-            msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=category)
+            ui_category = get_category_name(category, lang, is_income=True)
+            msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=ui_category)
         else:
             streak = await db_manager.add_expense(message.from_user.id, amount, category)
-            msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=category)
+            ui_category = get_category_name(category, lang, is_income=False)
+            msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
             
         if streak > 1:
             msg += "\n" + random.choice(SUPPORT_MESSAGES) + "\n"
@@ -260,10 +278,11 @@ async def process_text_or_amount(message: types.Message, state: FSMContext):
         await wait_msg.edit_text(msg)
         await state.clear()
     else:
-        # Ask for category
         await state.update_data(amount=amount)
         builder = InlineKeyboardBuilder()
+        type_lbl = "income" if parsed_type == "income" else "expense"
         for key, name in dicts.items():
-            builder.button(text=name, callback_data=f"cat_{name}")
+            btn_text = get_category_name(key, lang, is_income=(type_lbl=="income"))
+            builder.button(text=btn_text, callback_data=f"cat_{type_lbl}_{key}")
         builder.adjust(2)
         await wait_msg.edit_text(f"{amount} AMD. " + get_msg(lang, "choose_cat"), reply_markup=builder.as_markup())
