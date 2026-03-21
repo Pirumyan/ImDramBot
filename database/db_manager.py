@@ -187,3 +187,38 @@ async def get_users_to_remind():
     async with pool.acquire() as conn:
         rows = await conn.fetch('SELECT user_id, language FROM users WHERE last_entry_date < CURRENT_DATE OR last_entry_date IS NULL')
         return [(r['user_id'], r['language']) for r in rows]
+
+async def get_stats_by_period(user_id, period='month'):
+    async with pool.acquire() as conn:
+        if period == 'week':
+            date_filter = "created_at >= date_trunc('week', current_date)"
+        elif period == 'year':
+            date_filter = "created_at >= date_trunc('year', current_date)"
+        else: # month
+            date_filter = "created_at >= date_trunc('month', current_date)"
+
+        # expenses
+        rows_exp = await conn.fetch(
+            f'''SELECT category, SUM(amount) as total FROM expenses 
+               WHERE user_id = $1 AND {date_filter}
+               GROUP BY category''',
+            user_id
+        )
+        cat_sums = [(r['category'], r['total']) for r in rows_exp]
+
+        # total exp
+        row_exp_tot = await conn.fetchrow(
+            f'SELECT SUM(amount) FROM expenses WHERE user_id = $1 AND {date_filter}',
+            user_id
+        )
+        total_exp = row_exp_tot[0] if row_exp_tot and row_exp_tot[0] else 0
+
+        # total inc
+        row_inc_tot = await conn.fetchrow(
+            f'SELECT SUM(amount) FROM incomes WHERE user_id = $1 AND {date_filter}',
+            user_id
+        )
+        total_inc = row_inc_tot[0] if row_inc_tot and row_inc_tot[0] else 0
+
+        return cat_sums, total_exp, total_inc
+
