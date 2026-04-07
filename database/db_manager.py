@@ -104,6 +104,11 @@ async def update_streak(user_id):
             return streak
     return 0
 
+async def get_user_streak_view(user_id):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT streak_count FROM users WHERE user_id = $1', user_id)
+        return row[0] if row and row[0] else 0
+
 async def get_user_budget(user_id):
     async with pool.acquire() as conn:
         row = await conn.fetchrow('SELECT budget FROM users WHERE user_id = $1', user_id)
@@ -167,18 +172,18 @@ async def get_total_per_period(user_id, year, month):
         
         return exp, inc
 
-async def get_recent_transactions(user_id, limit=10):
+async def get_recent_transactions(user_id, limit=10, offset=0):
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             '''
-            SELECT id, amount, category as cat, created_at, 'expense' as type FROM expenses WHERE user_id = $1
+            SELECT id, amount, category as cat, subcategory, created_at, 'expense' as type FROM expenses WHERE user_id = $1
             UNION ALL
-            SELECT id, amount, source as cat, created_at, 'income' as type FROM incomes WHERE user_id = $1
-            ORDER BY created_at DESC LIMIT $2
+            SELECT id, amount, source as cat, NULL::text as subcategory, created_at, 'income' as type FROM incomes WHERE user_id = $1
+            ORDER BY created_at DESC LIMIT $2 OFFSET $3
             ''',
-            user_id, limit
+            user_id, limit, offset
         )
-        return [(r['id'], r['amount'], r['cat'], r['created_at'].strftime("%Y-%m-%d %H:%M:%S"), r['type']) for r in rows]
+        return [(r['id'], r['amount'], r['cat'], r['subcategory'], r['created_at'].strftime("%Y-%m-%d %H:%M:%S"), r['type']) for r in rows]
 
 async def delete_transaction(item_id, user_id, type_str):
     async with pool.acquire() as conn:
@@ -211,14 +216,14 @@ async def get_all_transactions(user_id):
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             '''
-            SELECT id, amount, category as cat, created_at, 'expense' as type FROM expenses WHERE user_id = $1
+            SELECT id, amount, category as cat, subcategory, created_at, 'expense' as type FROM expenses WHERE user_id = $1
             UNION ALL
-            SELECT id, amount, source as cat, created_at, 'income' as type FROM incomes WHERE user_id = $1
+            SELECT id, amount, source as cat, NULL::text as subcategory, created_at, 'income' as type FROM incomes WHERE user_id = $1
             ORDER BY created_at DESC
             ''',
             user_id
         )
-        return [(r['id'], r['amount'], r['cat'], r['created_at'].strftime("%Y-%m-%d %H:%M:%S"), r['type']) for r in rows]
+        return [(r['id'], r['amount'], r['cat'], r['subcategory'], r['created_at'].strftime("%Y-%m-%d %H:%M:%S"), r['type']) for r in rows]
 
 async def get_users_to_remind():
     async with pool.acquire() as conn:

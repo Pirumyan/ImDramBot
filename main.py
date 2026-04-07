@@ -10,6 +10,7 @@ from config import BOT_TOKEN
 from handlers import base_handlers
 from database import db_manager
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from utils.locales import get_msg
 
 # Web server for Render "Keep-Alive" trick
@@ -28,8 +29,9 @@ async def start_web_server():
     print(f"📡 Web server for keep-alive started on port {port}")
 
 async def daily_reminder(bot: Bot):
+    tz = ZoneInfo("Asia/Yerevan")
     while True:
-        now = datetime.now()
+        now = datetime.now(tz)
         target_time = now.replace(hour=21, minute=0, second=0, microsecond=0)
         if now > target_time:
             target_time += timedelta(days=1)

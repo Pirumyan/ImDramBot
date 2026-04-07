@@ -1,7 +1,19 @@
 import aiohttp
 import logging
 
+import time
+
+rates_cache = {}
+last_fetch_time = 0
+
 async def get_all_rates() -> dict:
+    global rates_cache, last_fetch_time
+    
+    # Return from cache if it's less than 6 hours old
+    current_time = time.time()
+    if current_time - last_fetch_time < 6 * 3600 and rates_cache:
+        return rates_cache
+
     rates = {"USD": 405.0, "EUR": 435.0, "RUB": 4.5}
     try:
         async with aiohttp.ClientSession() as session:
@@ -15,6 +27,9 @@ async def get_all_rates() -> dict:
                         rates["EUR"] = round(1 / rates_api["EUR"], 2)
                     if "RUB" in rates_api:
                         rates["RUB"] = round(1 / rates_api["RUB"], 2)
+                    
+                    rates_cache = rates
+                    last_fetch_time = current_time
     except Exception as e:
         logging.error(f"Error fetching ALL currency from API: {e}")
     return rates

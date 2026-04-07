@@ -1,5 +1,5 @@
-import matplotlib.pyplot as plt
-import io
+import urllib.parse
+import json
 from config import NORMS
 from utils.locales import get_category_name
 
@@ -29,27 +29,28 @@ def generate_pie_chart(category_sums, total_spent, lang):
         else:
             colors.append('#bdc3c7') # Gray for "Other"
             
-    fig, ax = plt.subplots(figsize=(8, 8))
-    wedges, texts, autotexts = ax.pie(
-        amounts, 
-        labels=labels, 
-        autopct='%1.1f%%', 
-        startangle=140, 
-        colors=colors,
-        pctdistance=0.85
-    )
+    chart_config = {
+        "type": "outlabeledPie",
+        "data": {
+            "labels": labels,
+            "datasets": [{"backgroundColor": colors, "data": amounts}]
+        },
+        "options": {
+            "plugins": {
+                "legend": False,
+                "outlabels": {
+                    "text": "%l %p",
+                    "color": "white",
+                    "stretch": 35,
+                    "font": {
+                        "resizable": True,
+                        "minSize": 12,
+                        "maxSize": 18
+                    }
+                }
+            }
+        }
+    }
     
-    plt.setp(autotexts, size=10, weight="bold", color="white")
-    plt.setp(texts, size=12)
-    
-    # Draw circle for donut chart effect
-    centre_circle = plt.Circle((0,0), 0.70, fc='white')
-    fig.gca().add_artist(centre_circle)
-    
-    plt.tight_layout()
-    
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=100)
-    buf.seek(0)
-    plt.close()
-    return buf
+    encoded_config = urllib.parse.quote(json.dumps(chart_config))
+    return f"https://quickchart.io/chart?c={encoded_config}&w=600&h=600&bkg=transparent"

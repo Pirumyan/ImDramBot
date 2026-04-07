@@ -111,6 +111,10 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
     balance = total_income - total_spent
     msg += get_msg(lang, "stats_balance", amount=f"{int(balance):,}")
     
+    streak = await db_manager.get_user_streak_view(user_id)
+    if streak > 1:
+        msg += f"\n🔥 {get_msg(lang, 'strike', strike=streak)}\n"
+    
     analysis = analyze_expenses(total_spent, cat_sums, lang=lang)
     if total_spent > 0:
         msg += "\n".join(analysis["report_lines"])
@@ -133,16 +137,15 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
     sent_msg = None
     if isinstance(message_or_call, types.Message):
         if total_spent > 0:
-            chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
-            photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
-            sent_msg = await message_or_call.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
+            chart_url = generate_pie_chart(cat_sums, total_spent, lang)
+            sent_msg = await message_or_call.answer_photo(chart_url, caption=msg, parse_mode="Markdown", reply_markup=markup)
         else:
             sent_msg = await message_or_call.answer(msg, parse_mode="Markdown", reply_markup=markup)
     else:
         # Edit message if no photo is attached, else answer with new photo
         if message_or_call.message.photo and total_spent > 0:
-            chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
-            photo = types.InputMediaPhoto(media=types.BufferedInputFile(chart_buf.read(), filename="chart.png"), caption=msg, parse_mode="Markdown")
+            chart_url = generate_pie_chart(cat_sums, total_spent, lang)
+            photo = types.InputMediaPhoto(media=chart_url, caption=msg, parse_mode="Markdown")
             sent_msg = await message_or_call.message.edit_media(media=photo, reply_markup=markup)
         elif not message_or_call.message.photo and total_spent == 0:
             sent_msg = await message_or_call.message.edit_text(msg, parse_mode="Markdown", reply_markup=markup)
@@ -153,9 +156,8 @@ async def send_stats(message_or_call, user_id, lang, period="month"):
             except:
                 pass
             if total_spent > 0:
-                chart_buf = generate_pie_chart(cat_sums, total_spent, lang)
-                photo = types.BufferedInputFile(chart_buf.read(), filename="chart.png")
-                sent_msg = await message_or_call.message.answer_photo(photo, caption=msg, parse_mode="Markdown", reply_markup=markup)
+                chart_url = generate_pie_chart(cat_sums, total_spent, lang)
+                sent_msg = await message_or_call.message.answer_photo(chart_url, caption=msg, parse_mode="Markdown", reply_markup=markup)
             else:
                 sent_msg = await message_or_call.message.answer(msg, parse_mode="Markdown", reply_markup=markup)
 
@@ -255,7 +257,7 @@ async def cmd_export(message: types.Message):
     
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["ID", "Amount", "Category", "Date", "Type"])
+        writer.writerow(["ID", "Amount", "Category", "Subcategory", "Date", "Type"])
         for t in transactions:
             writer.writerow(t)
             
@@ -273,33 +275,67 @@ async def btn_export_msg(message: types.Message):
 
 @router.message(lambda msg: msg.text in [get_msg("ru", "btn_history"), get_msg("en", "btn_history"), get_msg("hy", "btn_history")] or msg.text == "/history")
 async def cmd_history(message: types.Message):
-    lang = await db_manager.get_user_language(message.from_user.id)
-    recent = await db_manager.get_recent_transactions(message.from_user.id)
+    await show_history_page(message.from_user.id, message, page=0)
+
+@router.callback_query(F.data.startswith("histpage_"))
+async def process_history_page(callback: types.CallbackQuery):
+    page = int(callback.data.split("_")[1])
+    # Delete original messages to avoid clutter
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+    await show_history_page(callback.from_user.id, callback.message, page=page)
+    await callback.answer()
+
+async def show_history_page(user_id, message, page=0):
+    lang = await db_manager.get_user_language(user_id)
+    limit = 10
+    recent = await db_manager.get_recent_transactions(user_id, limit=limit, offset=page*limit)
     
     if not recent:
-        await message.answer(get_msg(lang, "history_empty"))
+        if page == 0:
+            await message.answer(get_msg(lang, "history_empty"))
+        else:
+            await message.answer("Больше записей нет.")
         return
     
-    await message.answer(get_msg(lang, "history_header"))
+    await message.answer(get_msg(lang, "history_header") + f" (Стр. {page+1})")
     
-    for item_id, amount, cat_ru, date_str, type_str in recent:
+    for item_id, amount, cat_ru, subcat, date_str, type_str in recent:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         date_fmt = date_obj.strftime("%d.%m %H:%M")
         
         cat_translated = get_category_name(cat_ru, lang, is_income=(type_str == "income"))
+        if subcat:
+            cat_translated += f" ({subcat})"
         
         builder = InlineKeyboardBuilder()
-        builder.button(text=get_msg(lang, "del_btn"), callback_data=f"del_{type_str}_{item_id}")
+        builder.button(text=get_msg(lang, "del_btn"), callback_data=f"del_{type_str}_{item_id}_{page}")
         builder.button(text=get_msg(lang, "edit_btn"), callback_data=f"edit_{'e' if type_str == 'expense' else 'i'}_{item_id}")
         builder.adjust(2)
         
         emoji = "🔴" if type_str == "expense" else "🟢"
         text = f"{emoji} {date_fmt} — **{int(amount):,} AMD** ({cat_translated})"
         await message.answer(text, reply_markup=builder.as_markup())
+        
+    # Navigation buttons
+    nav_builder = InlineKeyboardBuilder()
+    if page > 0:
+        nav_builder.button(text="◀️ Назад", callback_data=f"histpage_{page-1}")
+    if len(recent) == limit:
+        nav_builder.button(text="Вперед ▶️", callback_data=f"histpage_{page+1}")
+    
+    if nav_builder.as_markup().inline_keyboard:
+        nav_builder.adjust(2)
+        await message.answer("Навигация:", reply_markup=nav_builder.as_markup())
 
 @router.callback_query(F.data.startswith("del_"))
 async def process_delete(callback: types.CallbackQuery):
-    _, type_str, item_id = callback.data.split("_")
+    parts = callback.data.split("_")
+    type_str = parts[1]
+    item_id = parts[2]
+    page = int(parts[3]) if len(parts) > 3 else 0
     await db_manager.delete_transaction(int(item_id), callback.from_user.id, type_str)
     
     lang = await db_manager.get_user_language(callback.from_user.id)
@@ -440,8 +476,10 @@ async def process_voice(message: types.Message, state: FSMContext, bot: Bot):
                 ui_category = get_category_name(category, lang, is_income=True)
                 msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=ui_category)
             else:
-                streak = await db_manager.add_expense(message.from_user.id, amount, category)
+                streak = await db_manager.add_expense(message.from_user.id, amount, category, subcategory=parsed.get("subcategory"))
                 ui_category = get_category_name(category, lang, is_income=False)
+                if parsed.get("subcategory"):
+                    ui_category += f" ({parsed.get('subcategory')})"
                 msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
                 
             if streak > 1:
@@ -530,8 +568,10 @@ async def process_text_or_amount(message: types.Message, state: FSMContext):
             ui_category = get_category_name(category, lang, is_income=True)
             msg = get_msg(lang, "saved_income", amount=f"{int(amount):,}", category=ui_category)
         else:
-            streak = await db_manager.add_expense(message.from_user.id, amount, category)
+            streak = await db_manager.add_expense(message.from_user.id, amount, category, subcategory=parsed.get("subcategory"))
             ui_category = get_category_name(category, lang, is_income=False)
+            if parsed.get("subcategory"):
+                ui_category += f" ({parsed.get('subcategory')})"
             msg = get_msg(lang, "saved_expense", amount=f"{int(amount):,}", category=ui_category)
             
         if streak > 1:
