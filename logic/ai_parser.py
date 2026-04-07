@@ -87,6 +87,7 @@ async def parse_audio_file(file_path: str) -> dict:
         
     import asyncio
     for attempt in range(3):
+        sample_file = None
         try:
             model = genai.GenerativeModel(
                 model_name="gemini-2.5-flash", 
@@ -99,9 +100,6 @@ async def parse_audio_file(file_path: str) -> dict:
             
             # Generate content from audio
             response = await model.generate_content_async([sample_file, "Extract financial data from this audio record."])
-            
-            # Clean up the file from Gemini storage (optional but good practice)
-            genai.delete_file(sample_file.name)
             
             result_text = response.text.strip()
             
@@ -128,6 +126,12 @@ async def parse_audio_file(file_path: str) -> dict:
         except Exception as e:
             logging.error(f"Error parsing audio with Gemini (attempt {attempt+1}): {e}")
             await asyncio.sleep(2 ** attempt)
+        finally:
+            if sample_file:
+                try:
+                    genai.delete_file(sample_file.name)
+                except Exception as del_err:
+                    logging.error(f"Failed to delete file from Gemini: {del_err}")
             
     return {"type": "expense", "amount": None, "currency": "AMD", "category": None, "subcategory": None}
 

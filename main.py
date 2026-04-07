@@ -63,6 +63,15 @@ async def main():
     # Start Web Server (for Render)
     asyncio.create_task(start_web_server())
 
+    # Cleanup leftover temp files from previous sessions
+    import shutil
+    if os.path.exists("temp"):
+        try:
+            shutil.rmtree("temp")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not clean temp directory: {e}")
+    os.makedirs("temp", exist_ok=True)
+
     # Initialize Bot and Dispatcher
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
     dp = Dispatcher()
