@@ -49,7 +49,12 @@ MESSAGES = {
         "budget_btn_reset": "🗑 Сбросить",
         "budget_progress": "\n📈 Прогресс: `{bar}` {percent}%\n",
         "edit_btn": "✏️ Правка",
-        "edit_prompt": "Введите новую сумму для этой операции (только число):"
+        "edit_prompt": "Введите новую сумму для этой операции (только число):",
+        "nav_title": "Навигация:",
+        "nav_next": "Вперед ▶️",
+        "nav_prev": "◀️ Назад",
+        "history_end": "Больше записей нет.",
+        "page": "Стр."
     },
     "en": {
         "start": "👋 Hello! I am your AI financial assistant **ImDram**.\n\nI will help you control your budget in Armenia 🇦🇲\n\nChoose an action below or just write me a sum (e.g., `Refueled for 20k AMD` or `Salary 500$`)",
@@ -101,7 +106,12 @@ MESSAGES = {
         "budget_btn_reset": "🗑 Reset",
         "budget_progress": "\n📈 Progress: `{bar}` {percent}%\n",
         "edit_btn": "✏️ Edit",
-        "edit_prompt": "Enter the new amount for this operation (number only):"
+        "edit_prompt": "Enter the new amount for this operation (number only):",
+        "nav_title": "Navigation:",
+        "nav_next": "Next ▶️",
+        "nav_prev": "◀️ Back",
+        "history_end": "No more records.",
+        "page": "Page"
     },
     "hy": {
         "start": "👋 Բարև: Ես քո AI ֆինանսական օգնականն եմ՝ **ImDram**-ը:\n\nԿօգնեմ քեզ վերահսկել բյուջեդ Հայաստանում 🇦🇲\n\nԸնտրիր գործողություն կամ պարզապես գրիր (օր.՝ `Տաքսի 2000 դրամ` կամ `Աշխատավարձ 500$`):",
@@ -153,7 +163,12 @@ MESSAGES = {
         "budget_btn_reset": "🗑 Ջնջել",
         "budget_progress": "\n📈 Ընթացքը՝ `{bar}` {percent}%\n",
         "edit_btn": "✏️ Փոփոխել",
-        "edit_prompt": "Մուտքագրեք նոր գումարը այս գործողության համար (միայն թիվ)․"
+        "edit_prompt": "Մուտքագրեք նոր գումարը այս գործողության համար (միայն թիվ)․",
+        "nav_title": "Նավիգացիա:",
+        "nav_next": "Առաջ ▶️",
+        "nav_prev": "◀️ Հետ",
+        "history_end": "Այլ գրառումներ չկան:",
+        "page": "Էջ"
     }
 }
 

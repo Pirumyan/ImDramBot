@@ -297,10 +297,11 @@ async def show_history_page(user_id, message, page=0):
         if page == 0:
             await message.answer(get_msg(lang, "history_empty"))
         else:
-            await message.answer("Больше записей нет.")
+            await message.answer(get_msg(lang, "history_end"))
         return
     
-    await message.answer(get_msg(lang, "history_header") + f" (Стр. {page+1})")
+    page_label = get_msg(lang, "page")
+    await message.answer(get_msg(lang, "history_header") + f" ({page_label} {page+1})")
     
     for item_id, amount, cat_ru, subcat, date_str, type_str in recent:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
@@ -322,13 +323,13 @@ async def show_history_page(user_id, message, page=0):
     # Navigation buttons
     nav_builder = InlineKeyboardBuilder()
     if page > 0:
-        nav_builder.button(text="◀️ Назад", callback_data=f"histpage_{page-1}")
+        nav_builder.button(text=get_msg(lang, "nav_prev"), callback_data=f"histpage_{page-1}")
     if len(recent) == limit:
-        nav_builder.button(text="Вперед ▶️", callback_data=f"histpage_{page+1}")
+        nav_builder.button(text=get_msg(lang, "nav_next"), callback_data=f"histpage_{page+1}")
     
     if nav_builder.as_markup().inline_keyboard:
         nav_builder.adjust(2)
-        await message.answer("Навигация:", reply_markup=nav_builder.as_markup())
+        await message.answer(get_msg(lang, "nav_title"), reply_markup=nav_builder.as_markup())
 
 @router.callback_query(F.data.startswith("del_"))
 async def process_delete(callback: types.CallbackQuery):
